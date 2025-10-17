@@ -8,6 +8,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         GlobalValueShouldbeMatch: Label 'Value should be matched';
         GlobalValueShouldbeNotMatch: Label 'Value should be not matched';
         GlobalItem: Record Item;
+        GlobalLibraryInventory: Codeunit "Library - Inventory";
 
         GlobalCustomer: Record Customer;
         GlobalSalesHeader: Record "Sales Header";
@@ -105,7 +106,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         SalesOrderSetup(true);
 
         // [Then] The sales line should have the customer comment in the ESD Comment field.
-        CheckingPostedCommentTransferSales();
+        CheckingPostedCommentTransferSales(true);
     end;
 
     [ConfirmHandler]
@@ -130,7 +131,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         SalesOrderSetup(false);
 
         // [Then] The sales line should Not have the customer comment in the ESD Comment field.
-        "CheckingPostedComment_Not_TransferSales"();
+        "CheckingPostedCommentTransferSales"(false);
     end;
 
     [Test]
@@ -149,7 +150,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         SalesOrderSetup(false);
 
         // [Then] The sales line should Not have the customer comment in the ESD Comment field.
-        "CheckingPostedComment_Not_TransferSales"();
+        "CheckingPostedCommentTransferSales"(false);
     end;
 
     [ConfirmHandler]
@@ -160,7 +161,7 @@ codeunit 50102 "ESD Comment Transfer Test"
 
     [Test]
     [HandlerFunctions('UnconfirmSalesHandler')]
-    procedure VerifyCustCmnt_Not_TransferbyTransferbyHandlerCmtTrfieldFalse()
+    procedure VerifyCustCmnt_Not_TransferbyHandlerCmtTrfieldFalse()
     begin
         // [Feature] ESD Comment Transfer Test
         // [Scenario] Verify that customer comments are transferred to sales line when creating a new sales order.
@@ -174,7 +175,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         SalesOrderSetup(false);
 
         // [Then] The sales line should Not have the customer comment in the ESD Comment field.
-        "CheckingPostedComment_Not_TransferSales"();
+        "CheckingPostedCommentTransferSales"(false);
     end;
 
     [Test]
@@ -193,7 +194,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         PurchaseOrderSetup(true);
 
         // [Then] The purchase line should have the vendor comment in the ESD Comment field.
-        CheckingPostedCommentTransferPurchase();
+        CheckingPostedCommentTransferPurchase(true);
 
     end;
 
@@ -219,7 +220,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         PurchaseOrderSetup(false);
 
         // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
-        CheckingPostedComment_Not_TransferPurchase();
+        CheckingPostedCommentTransferPurchase(false);
 
     end;
 
@@ -239,7 +240,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         PurchaseOrderSetup(false);
 
         // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
-        CheckingPostedComment_Not_TransferPurchase();
+        CheckingPostedCommentTransferPurchase(false);
 
     end;
 
@@ -265,20 +266,18 @@ codeunit 50102 "ESD Comment Transfer Test"
         PurchaseOrderSetup(false);
 
         // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
-        CheckingPostedComment_Not_TransferPurchase();
+        CheckingPostedCommentTransferPurchase(false);
 
     end;
 
     local procedure CreateCustSetupData(Comment: Text[100]; TransferComment: Boolean)
-    var
-        LibraryInventory: Codeunit "Library - Inventory";
     begin
         GlobalLibrarySales.CreateCustomer(GlobalCustomer);
         GlobalCustomer.Validate("Transfer Comment", TransferComment);
         GlobalCustomer.Validate("ESD Comment", Comment);
         GlobalCustomer.Modify();
 
-        LibraryInventory.CreateItem(GlobalItem);
+        GlobalLibraryInventory.CreateItem(GlobalItem);
 
         CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
         CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
@@ -305,7 +304,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         GlobalSalesInvoiceHeader.Get(InvoiceNo);
     end;
 
-    local procedure CheckingPostedCommentTransferSales()
+    local procedure CheckingPostedCommentTransferSales(AreEqual: Boolean)
     var
         SalesInvoiceLine: Record "Sales Invoice Line";
         SalesShipmentLine: Record "Sales Shipment Line";
@@ -318,37 +317,24 @@ codeunit 50102 "ESD Comment Transfer Test"
         SalesShipmentLine.SetRange(Type, "Sales Line Type"::Item);
         GlobalAssert.RecordCount(SalesShipmentLine, 1);
         SalesShipmentLine.FindFirst();
-        GlobalAssert.AreEqual(GlobalCustomer."ESD Comment", SalesInvoiceLine."ESD Comment", GlobalValueShouldbeMatch);
-        GlobalAssert.AreEqual(GlobalCustomer."ESD Comment", SalesShipmentLine."ESD Comment", GlobalValueShouldbeMatch);
-    end;
 
-    local procedure "CheckingPostedComment_Not_TransferSales"()
-    var
-        SalesInvoiceLine: Record "Sales Invoice Line";
-        SalesShipmentLine: Record "Sales Shipment Line";
-    begin
-        SalesInvoiceLine.SetRange("Document No.", GlobalSalesInvoiceHeader."No.");
-        SalesInvoiceLine.SetRange(Type, "Sales Line Type"::Item);
-        GlobalAssert.RecordCount(SalesInvoiceLine, 1);
-        SalesInvoiceLine.FindFirst();
-        SalesShipmentLine.SetRange("Document No.", GlobalSalesShipmentHader."No.");
-        SalesShipmentLine.SetRange(Type, "Sales Line Type"::Item);
-        GlobalAssert.RecordCount(SalesShipmentLine, 1);
-        SalesShipmentLine.FindFirst();
-        GlobalAssert.AreNotEqual(GlobalCustomer."ESD Comment", SalesInvoiceLine."ESD Comment", GlobalValueShouldbeNotMatch);
-        GlobalAssert.AreNotEqual(GlobalCustomer."ESD Comment", SalesShipmentLine."ESD Comment", GlobalValueShouldbeNotMatch);
+        if AreEqual then begin
+            GlobalAssert.AreEqual(GlobalCustomer."ESD Comment", SalesInvoiceLine."ESD Comment", GlobalValueShouldbeMatch);
+            GlobalAssert.AreEqual(GlobalCustomer."ESD Comment", SalesShipmentLine."ESD Comment", GlobalValueShouldbeMatch);
+        end else begin
+            GlobalAssert.AreNotEqual(GlobalCustomer."ESD Comment", SalesInvoiceLine."ESD Comment", GlobalValueShouldbeNotMatch);
+            GlobalAssert.AreNotEqual(GlobalCustomer."ESD Comment", SalesShipmentLine."ESD Comment", GlobalValueShouldbeNotMatch);
+        end;
     end;
 
     local procedure CreateVendSetupData(Comment: Text[100]; TransferComment: Boolean)
-    var
-        LibraryInventory: Codeunit "Library - Inventory";
     begin
         GlobalLibraryPurchase.CreateVendor(GlobalVendor);
         GlobalVendor.Validate("Transfer Comment", TransferComment);
         GlobalVendor.Validate("ESD Comment", Comment);
         GlobalVendor.Modify();
 
-        LibraryInventory.CreateItem(GlobalItem);
+        GlobalLibraryInventory.CreateItem(GlobalItem);
 
         CheckInsertVATPostingSetup(GlobalVendor."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
         CreateGenPostingSetup(GlobalVendor."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
@@ -379,7 +365,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         GlobalPurchaseInvoiceHeader.Get(InvoiceNo);
     end;
 
-    local procedure CheckingPostedCommentTransferPurchase()
+    local procedure CheckingPostedCommentTransferPurchase(AreEqual: Boolean)
     var
         PurchaseInvoiceLine: Record "Purch. Inv. Line";
         PurchaseReceiptLine: Record "Purch. Rcpt. Line";
@@ -392,24 +378,12 @@ codeunit 50102 "ESD Comment Transfer Test"
         PurchaseReceiptLine.SetRange(Type, "Purchase Line Type"::Item);
         GlobalAssert.RecordCount(PurchaseReceiptLine, 1);
         PurchaseReceiptLine.FindFirst();
-        GlobalAssert.AreEqual(GlobalVendor."ESD Comment", PurchaseInvoiceLine."ESD Comment", GlobalValueShouldbeMatch);
-        GlobalAssert.AreEqual(GlobalVendor."ESD Comment", PurchaseReceiptLine."ESD Comment", GlobalValueShouldbeMatch);
-    end;
-
-    local procedure CheckingPostedComment_Not_TransferPurchase()
-    var
-        PurchaseInvoiceLine: Record "Purch. Inv. Line";
-        PurchaseReceiptLine: Record "Purch. Rcpt. Line";
-    begin
-        PurchaseInvoiceLine.SetRange("Document No.", GlobalPurchaseInvoiceHeader."No.");
-        PurchaseInvoiceLine.SetRange(Type, "Purchase Line Type"::Item);
-        GlobalAssert.RecordCount(PurchaseInvoiceLine, 1);
-        PurchaseInvoiceLine.FindFirst();
-        PurchaseReceiptLine.SetRange("Document No.", GlobalPurchaseReceiptHeader."No.");
-        PurchaseReceiptLine.SetRange(Type, "Purchase Line Type"::Item);
-        GlobalAssert.RecordCount(PurchaseReceiptLine, 1);
-        PurchaseReceiptLine.FindFirst();
-        GlobalAssert.AreNotEqual(GlobalVendor."ESD Comment", PurchaseInvoiceLine."ESD Comment", GlobalValueShouldbeNotMatch);
-        GlobalAssert.AreNotEqual(GlobalVendor."ESD Comment", PurchaseReceiptLine."ESD Comment", GlobalValueShouldbeNotMatch);
+        if AreEqual then begin
+            GlobalAssert.AreEqual(GlobalVendor."ESD Comment", PurchaseInvoiceLine."ESD Comment", GlobalValueShouldbeMatch);
+            GlobalAssert.AreEqual(GlobalVendor."ESD Comment", PurchaseReceiptLine."ESD Comment", GlobalValueShouldbeMatch);
+        end else begin
+            GlobalAssert.AreNotEqual(GlobalVendor."ESD Comment", PurchaseInvoiceLine."ESD Comment", GlobalValueShouldbeNotMatch);
+            GlobalAssert.AreNotEqual(GlobalVendor."ESD Comment", PurchaseReceiptLine."ESD Comment", GlobalValueShouldbeNotMatch);
+        end;
     end;
 }
