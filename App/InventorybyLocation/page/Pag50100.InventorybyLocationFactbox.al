@@ -22,7 +22,7 @@ page 50100 "Inventory by Location"
                 ApplicationArea = Planning;
                 Visible = false;
             }
-            field("Remaining Quantity"; Rec."Remaining Quantity")
+            field("Quantity"; Rec."Quantity")
             {
                 ApplicationArea = Planning;
                 ToolTip = 'Specifies the remaining quantity of the item in the specified location.';
@@ -66,7 +66,7 @@ page 50100 "Inventory by Location"
         Rec."Entry No." := EntryNo;
         Rec."Item No." := GlobalItemNo;
         Rec."Location Code" := GlobalLocationCode;
-        Rec."Remaining Quantity" := RemainingQty;
+        Rec.Quantity := RemainingQty;
         Rec.Insert();
     end;
 
