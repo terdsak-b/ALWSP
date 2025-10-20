@@ -4,7 +4,10 @@ codeunit 50102 "ESD Comment Transfer Test"
 
     var
         GlobalAssert: Codeunit Assert;
-        GlobalComment: Label 'This is a test comment';
+        GlobalComment: Text[100];
+        GlobalTestComment: Label 'This is a test comment';
+        GlobalLibraryUtility: Codeunit "Library - Utility";
+
         GlobalValueShouldbeMatch: Label 'Value should be matched';
         GlobalValueShouldbeNotMatch: Label 'Value should be not matched';
         GlobalItem: Record Item;
@@ -25,6 +28,229 @@ codeunit 50102 "ESD Comment Transfer Test"
 
         GlobalPurchaseInvoiceHeader: Record "Purch. Inv. Header";
         GlobalPurchaseReceiptHeader: Record "Purch. Rcpt. Header";
+
+    [Test]
+    procedure AssignCmntValueToCustomer()
+    var
+
+    begin
+        //[Feature] ESD Comment Transfer Test
+        //[Scenario #0000 ] Verify that comment value can be assigned to customer ESD Comment field.
+        Initialize();
+
+        //[GIVEN] A comment value
+        GlobalComment := CreateCommentValue();
+        //[GIVEN] A customer record
+        GlobalLibrarySales.CreateCustomer(GlobalCustomer);
+
+        //[WHEN] Set the comment value to customer ESD Comment field and save the customer record.
+        SetCommentValueOnCust();
+
+        //[THEN] Customer ESD Comment field should have the assigned comment value.
+        VerifyCommentValueOnCust();
+    end;
+
+    [Test]
+    [HandlerFunctions('ConfirmHandler')]
+    procedure CustCmntTransferToPostedSalesInvLineAndSalesShiptLine()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0001 ] Verify that customer comments are transferred to sales line when creating a new sales order.
+        //            and comment should be same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A customer with a comment and transfer comment enabled. and create a new sales order for that customer.
+        CreateCustSetupData(GlobalComment, true);
+
+        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
+        SalesOrderSetup(true);
+
+        // [Then] The sales line should have the customer comment in the ESD Comment field.
+        VerifyPostedCommentTransferSales(true);
+    end;
+
+    [Test]
+    [HandlerFunctions('ConfirmHandler')]
+    procedure CustCmnt_Not_TransferbyCmntTrfield()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0002 ] Verify that customer comments are transferred to sales line when creating a new sales order.
+        //            and comment should be Not same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A customer with a comment and transfer comment disabled. and create a new sales order for that customer.
+        CreateCustSetupData(GlobalComment, false);
+
+        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
+        SalesOrderSetup(false);
+
+        // [Then] The sales line should Not have the customer comment in the ESD Comment field.
+        VerifyPostedCommentTransferSales(false);
+    end;
+
+    [Test]
+    [HandlerFunctions('UnconfirmHandler')]
+    procedure CustCmnt_Not_TransferbyHandlerCmtTrfieldTrue()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0003 ] Verify that customer comments are transferred to sales line when creating a new sales order.
+        //            and comment should be Not same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A customer with a comment and transfer comment disabled. and create a new sales order for that customer.
+        CreateCustSetupData(GlobalComment, true);
+
+        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
+        SalesOrderSetup(false);
+
+        // [Then] The sales line should Not have the customer comment in the ESD Comment field.
+        VerifyPostedCommentTransferSales(false);
+    end;
+
+    [Test]
+    [HandlerFunctions('UnconfirmHandler')]
+    procedure CustCmnt_Not_TransferbyHandlerCmtTrfieldFalse()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0004 ] Verify that customer comments are transferred to sales line when creating a new sales order.
+        //            and comment should be Not same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A customer with a comment and transfer comment disabled. and create a new sales order for that customer.
+        CreateCustSetupData(GlobalComment, false);
+
+        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
+        SalesOrderSetup(false);
+
+        // [Then] The sales line should Not have the customer comment in the ESD Comment field.
+        VerifyPostedCommentTransferSales(false);
+    end;
+
+    [Test]
+    procedure AssignCmntValueToVendor()
+    var
+
+    begin
+        //[Feature] ESD Comment Transfer Test
+        //[Scenario #0000 ] Verify that comment value can be assigned to vendor ESD Comment field.
+        //[GIVEN] A comment value
+        GlobalComment := CreateCommentValue();
+        //[GIVEN] A vendor record
+        GlobalLibraryPurchase.CreateVendor(GlobalVendor);
+
+        //[WHEN] Set the comment value to vendor ESD Comment field and save the vendor record.
+        SetCommentValueOnVend();
+
+        //[THEN] Vendor ESD Comment field should have the assigned comment value.
+        VerifyCommentValueOnVend();
+    end;
+
+    [Test]
+    [HandlerFunctions('ConfirmHandler')]
+    procedure VendorCmntTransferToPostedPurchInvLineAndPurchRcptLine()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0001 ] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
+        //            and comment should be same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A vendor with a comment and transfer comment enabled. and create a new purchase order for that vendor.
+        CreateVendSetupData(GlobalComment, true);
+
+        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
+        PurchaseOrderSetup(true);
+
+        // [Then] The purchase line should have the vendor comment in the ESD Comment field.
+        VerifyPostedCommentTransferPurchase(true);
+
+    end;
+
+    [Test]
+    [HandlerFunctions('ConfirmHandler')]
+    procedure VendorCmnt_Not_TransferbyCmntTrfield()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0002 ] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
+        //            and comment should be Not same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A vendor with a comment and transfer comment disabled. and create a new purchase order for that vendor.
+        CreateVendSetupData(GlobalComment, false);
+
+        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
+        PurchaseOrderSetup(false);
+
+        // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
+        VerifyPostedCommentTransferPurchase(false);
+
+    end;
+
+    [Test]
+    [HandlerFunctions('UnconfirmHandler')]
+    procedure VendorCmnt_Not_TransferbyHandlerCmtTrfieldTrue()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0003 ] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
+        //            and comment should be Not same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A vendor with a comment and transfer comment disabled. and create a new purchase order for that vendor.
+        CreateVendSetupData(GlobalComment, true);
+
+        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
+        PurchaseOrderSetup(false);
+
+        // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
+        VerifyPostedCommentTransferPurchase(false);
+
+    end;
+
+    [Test]
+    [HandlerFunctions('UnconfirmHandler')]
+    procedure VendorCmnt_Not_TransferbyHandlerCmtTrfieldFalse()
+    begin
+        // [Feature] ESD Comment Transfer Test
+        // [Scenario #0004 ] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
+        //            and comment should be Not same in posted sales invoice line and sales shipment line.
+        Initialize();
+
+        // [Given] A vendor with a comment and transfer comment disabled. and create a new purchase order for that vendor.
+        CreateVendSetupData(GlobalComment, false);
+
+        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
+        PurchaseOrderSetup(false);
+
+        // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
+        VerifyPostedCommentTransferPurchase(false);
+
+    end;
+
+    local procedure CreateCommentValue(): Text[100]
+    begin
+        exit(GlobalLibraryUtility.GenerateRandomText(50));
+    end;
+
+    local procedure SetCommentValueOnCust()
+    begin
+        GlobalCustomer.Validate("ESD Comment", GlobalComment);
+        GlobalCustomer.Modify();
+    end;
+
+    local procedure SetCommentValueOnVend()
+    begin
+        GlobalVendor.Validate("ESD Comment", GlobalComment);
+        GlobalVendor.Modify();
+    end;
+
+    local procedure VerifyCommentValueOnCust()
+    begin
+        GlobalAssert.AreEqual(GlobalComment, GlobalCustomer."ESD Comment", 'ESD Comment value on Customer does not match the expected value.');
+    end;
+
+    local procedure VerifyCommentValueOnVend()
+    begin
+        GlobalAssert.AreEqual(GlobalComment, GlobalVendor."ESD Comment", 'ESD Comment value on Vendor does not match the expected value.');
+    end;
 
     local procedure CheckInsertVATPostingSetup(GetVATBus: Code[20]; GetVATProd: Code[20])
     var
@@ -90,188 +316,10 @@ codeunit 50102 "ESD Comment Transfer Test"
         //Temporary empty procedure for Initialize
     end;
 
-    [Test]
-    [HandlerFunctions('ConfirmSalesHandler')]
-    procedure VerifyCustCmntTransferToPostedSalesInvLineAndSalesShiptLine()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that customer comments are transferred to sales line when creating a new sales order.
-        //            and comment should be same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A customer with a comment and transfer comment enabled. and create a new sales order for that customer.
-        CreateCustSetupData(GlobalComment, true);
-
-        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
-        SalesOrderSetup(true);
-
-        // [Then] The sales line should have the customer comment in the ESD Comment field.
-        CheckingPostedCommentTransferSales(true);
-    end;
-
-    [ConfirmHandler]
-    procedure ConfirmSalesHandler(Question: Text; var Answer: Boolean)
-    begin
-        Answer := true;
-    end;
-
-    [Test]
-    [HandlerFunctions('ConfirmSalesHandler')]
-    procedure VerifyCustCmnt_Not_TransferbyCmntTrfield()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that customer comments are transferred to sales line when creating a new sales order.
-        //            and comment should be Not same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A customer with a comment and transfer comment disabled. and create a new sales order for that customer.
-        CreateCustSetupData(GlobalComment, false);
-
-        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
-        SalesOrderSetup(false);
-
-        // [Then] The sales line should Not have the customer comment in the ESD Comment field.
-        "CheckingPostedCommentTransferSales"(false);
-    end;
-
-    [Test]
-    [HandlerFunctions('UnconfirmSalesHandler')]
-    procedure VerifyCustCmnt_Not_TransferbyHandlerCmtTrfieldTrue()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that customer comments are transferred to sales line when creating a new sales order.
-        //            and comment should be Not same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A customer with a comment and transfer comment disabled. and create a new sales order for that customer.
-        CreateCustSetupData(GlobalComment, true);
-
-        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
-        SalesOrderSetup(false);
-
-        // [Then] The sales line should Not have the customer comment in the ESD Comment field.
-        "CheckingPostedCommentTransferSales"(false);
-    end;
-
-    [ConfirmHandler]
-    procedure UnconfirmSalesHandler(Question: Text; var Answer: Boolean)
-    begin
-        Answer := false;
-    end;
-
-    [Test]
-    [HandlerFunctions('UnconfirmSalesHandler')]
-    procedure VerifyCustCmnt_Not_TransferbyHandlerCmtTrfieldFalse()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that customer comments are transferred to sales line when creating a new sales order.
-        //            and comment should be Not same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A customer with a comment and transfer comment disabled. and create a new sales order for that customer.
-        CreateCustSetupData(GlobalComment, false);
-
-        // [When] Add sales line to the sales order and add qty and Posted document sales invoice line.
-        SalesOrderSetup(false);
-
-        // [Then] The sales line should Not have the customer comment in the ESD Comment field.
-        "CheckingPostedCommentTransferSales"(false);
-    end;
-
-    [Test]
-    [HandlerFunctions('ConfirmPurchaseHandler')]
-    procedure VerifyVendorCmntTransferToPostedPurchInvLineAndPurchRcptLine()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
-        //            and comment should be same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A vendor with a comment and transfer comment enabled. and create a new purchase order for that vendor.
-        CreateVendSetupData(GlobalComment, true);
-
-        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
-        PurchaseOrderSetup(true);
-
-        // [Then] The purchase line should have the vendor comment in the ESD Comment field.
-        CheckingPostedCommentTransferPurchase(true);
-
-    end;
-
-    [ConfirmHandler]
-    procedure ConfirmPurchaseHandler(Question: Text; var Answer: Boolean)
-    begin
-        Answer := true;
-    end;
-
-    [Test]
-    [HandlerFunctions('ConfirmPurchaseHandler')]
-    procedure VerifyVendorCmnt_Not_TransferbyCmntTrfield()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
-        //            and comment should be Not same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A vendor with a comment and transfer comment disabled. and create a new purchase order for that vendor.
-        CreateVendSetupData(GlobalComment, false);
-
-        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
-        PurchaseOrderSetup(false);
-
-        // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
-        CheckingPostedCommentTransferPurchase(false);
-
-    end;
-
-    [Test]
-    [HandlerFunctions('UnconfirmPurchaseHandler')]
-    procedure VerifyVendorCmnt_Not_TransferbyHandlerCmtTrfieldTrue()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
-        //            and comment should be Not same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A vendor with a comment and transfer comment disabled. and create a new purchase order for that vendor.
-        CreateVendSetupData(GlobalComment, true);
-
-        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
-        PurchaseOrderSetup(false);
-
-        // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
-        CheckingPostedCommentTransferPurchase(false);
-
-    end;
-
-    [ConfirmHandler]
-    procedure UnconfirmPurchaseHandler(Question: Text; var Answer: Boolean)
-    begin
-        Answer := false;
-    end;
-
-    [Test]
-    [HandlerFunctions('UnconfirmPurchaseHandler')]
-    procedure VerifyVendorCmnt_Not_TransferbyHandlerCmtTrfieldFalse()
-    begin
-        // [Feature] ESD Comment Transfer Test
-        // [Scenario] Verify that vendor comments are transferred to purchase line when creating a new purchase order.
-        //            and comment should be Not same in posted sales invoice line and sales shipment line.
-        Initialize();
-
-        // [Given] A vendor with a comment and transfer comment disabled. and create a new purchase order for that vendor.
-        CreateVendSetupData(GlobalComment, false);
-
-        // [When] Add purchase line to the purchase order and add qty and Posted document purchase invoice line.
-        PurchaseOrderSetup(false);
-
-        // [Then] The purchase line should Not have the vendor comment in the ESD Comment field.
-        CheckingPostedCommentTransferPurchase(false);
-
-    end;
-
     local procedure CreateCustSetupData(Comment: Text[100]; TransferComment: Boolean)
     begin
+        if Comment = '' then
+            Comment := GlobalTestComment;
         GlobalLibrarySales.CreateCustomer(GlobalCustomer);
         GlobalCustomer.Validate("Transfer Comment", TransferComment);
         GlobalCustomer.Validate("ESD Comment", Comment);
@@ -304,7 +352,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         GlobalSalesInvoiceHeader.Get(InvoiceNo);
     end;
 
-    local procedure CheckingPostedCommentTransferSales(AreEqual: Boolean)
+    local procedure VerifyPostedCommentTransferSales(AreEqual: Boolean)
     var
         SalesInvoiceLine: Record "Sales Invoice Line";
         SalesShipmentLine: Record "Sales Shipment Line";
@@ -329,6 +377,8 @@ codeunit 50102 "ESD Comment Transfer Test"
 
     local procedure CreateVendSetupData(Comment: Text[100]; TransferComment: Boolean)
     begin
+        if Comment = '' then
+            Comment := GlobalTestComment;
         GlobalLibraryPurchase.CreateVendor(GlobalVendor);
         GlobalVendor.Validate("Transfer Comment", TransferComment);
         GlobalVendor.Validate("ESD Comment", Comment);
@@ -345,7 +395,6 @@ codeunit 50102 "ESD Comment Transfer Test"
     var
         InvoiceNo: Code[20];
         ReceiptNo: Code[20];
-        LibraryUtility: Codeunit "Library - Utility";
     begin
         GlobalLibraryPurchase.CreatePurchHeader(GlobalPurchaseHeader, "Purchase Document Type"::Order, GlobalVendor."No.");
         GlobalLibraryPurchase.CreatePurchaseLine(GlobalPurchaseLine, GlobalPurchaseHeader, "Purchase Line Type"::Item, GlobalItem."No.", 1.00);
@@ -355,7 +404,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         else
             GlobalAssert.AreNotEqual(GlobalVendor."ESD Comment", GlobalPurchaseLine."ESD Comment", GlobalValueShouldbeNotMatch);
 
-        GlobalPurchaseHeader."Vendor Invoice No." := LibraryUtility.GenerateRandomText(20);
+        GlobalPurchaseHeader."Vendor Invoice No." := GlobalLibraryUtility.GenerateRandomText(20);
         GlobalPurchaseHeader.Modify();
 
         ReceiptNo := GlobalLibraryPurchase.PostPurchaseDocument(GlobalPurchaseHeader, true, false);
@@ -365,7 +414,7 @@ codeunit 50102 "ESD Comment Transfer Test"
         GlobalPurchaseInvoiceHeader.Get(InvoiceNo);
     end;
 
-    local procedure CheckingPostedCommentTransferPurchase(AreEqual: Boolean)
+    local procedure VerifyPostedCommentTransferPurchase(AreEqual: Boolean)
     var
         PurchaseInvoiceLine: Record "Purch. Inv. Line";
         PurchaseReceiptLine: Record "Purch. Rcpt. Line";
@@ -385,5 +434,17 @@ codeunit 50102 "ESD Comment Transfer Test"
             GlobalAssert.AreNotEqual(GlobalVendor."ESD Comment", PurchaseInvoiceLine."ESD Comment", GlobalValueShouldbeNotMatch);
             GlobalAssert.AreNotEqual(GlobalVendor."ESD Comment", PurchaseReceiptLine."ESD Comment", GlobalValueShouldbeNotMatch);
         end;
+    end;
+
+    [ConfirmHandler]
+    procedure ConfirmHandler(Question: Text; var Answer: Boolean)
+    begin
+        Answer := true;
+    end;
+
+    [ConfirmHandler]
+    procedure UnconfirmHandler(Question: Text; var Answer: Boolean)
+    begin
+        Answer := false;
     end;
 }

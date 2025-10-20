@@ -1,4 +1,4 @@
-codeunit 50103 InventSperatebyLocationTest
+codeunit 50103 "Inventory by Location Test"
 {
     Subtype = Test;
 
