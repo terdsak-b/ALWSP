@@ -1,4 +1,4 @@
-codeunit 50102 "ESD Comment Transfer Test"
+codeunit 50102 "ESD Comment Transfer Testing"
 {
     Subtype = Test;
 
@@ -31,8 +31,6 @@ codeunit 50102 "ESD Comment Transfer Test"
 
     [Test]
     procedure AssignCmntValueToCustomer()
-    var
-
     begin
         //[Feature] ESD Comment Transfer Test
         //[Scenario #0000 ] Verify that comment value can be assigned to customer ESD Comment field.
@@ -128,8 +126,6 @@ codeunit 50102 "ESD Comment Transfer Test"
 
     [Test]
     procedure AssignCmntValueToVendor()
-    var
-
     begin
         //[Feature] ESD Comment Transfer Test
         //[Scenario #0000 ] Verify that comment value can be assigned to vendor ESD Comment field.

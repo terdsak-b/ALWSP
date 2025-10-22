@@ -14,8 +14,8 @@ tableextension 50001 "Production Qty" extends Item
 
             trigger OnValidate()
             begin
-                if Rec."Production Quantity" < 1 then
-                    Error('Production Quantity cannot be less than 1.');
+                if Rec."Production Quantity" < 0 then
+                    Error('Production Quantity cannot be less than 0.');
             end;
         }
     }

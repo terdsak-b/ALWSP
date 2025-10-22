@@ -140,6 +140,7 @@ page 50001 "Manufacturing Item"
 
     trigger OnOpenPage()
     begin
+        //Filter data
         Rec.SetRange(Type, Rec.Type::Inventory);
         Rec.SetRange("Replenishment System", Rec."Replenishment System"::"Prod. Order");
         Rec.SetRange("Manufacturing Policy", Rec."Manufacturing Policy"::"Make-to-Order");
@@ -149,6 +150,7 @@ page 50001 "Manufacturing Item"
 
         if Rec.FindSet() then
             repeat
+                //Set Production Quantity default to 1 when open page
                 if Rec."Production Quantity" <> 1 then begin
                     Rec."Production Quantity" := 1;
                 end;
