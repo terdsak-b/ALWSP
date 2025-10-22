@@ -22,7 +22,7 @@ page 50001 "Manufacturing Item"
                     ApplicationArea = All;
                     Editable = false;
                 }
-                field("Product Quantity"; Rec."Production Quantity")
+                field("Production Quantity"; Rec."Production Quantity")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the quantity to be produced for the item (Default 1).';
@@ -87,14 +87,13 @@ page 50001 "Manufacturing Item"
 
                 trigger OnAction()
                 var
-                    CreateProdOrder: Codeunit "CalcProdOrder";
                     ConfirmMsg: Label 'Do you want to create production orders for all listed items?';
                 begin
                     if not Confirm(ConfirmMsg) then
                         exit;
                     if Rec.FindSet() then
                         repeat
-                            CreateProdOrder.CreateProdOrder(Rec, Rec."Production Quantity");
+                            GlobalCreateProdOrder.CreateProdOrder(Rec, Rec."Production Quantity");
                         until Rec.Next() = 0;
                     Message('Created production orders successfully.');
                 end;
@@ -112,7 +111,6 @@ page 50001 "Manufacturing Item"
 
                 trigger OnAction()
                 var
-                    CreateProdOrder: Codeunit "CalcProdOrder";
                     Item: Record Item;
                     SelectionCount: Integer;
                     ConfirmMsg: Text;
@@ -129,14 +127,15 @@ page 50001 "Manufacturing Item"
 
                     if Item.FindSet() then
                         repeat
-                            CreateProdOrder.CreateProdOrder(Item, Item."Production Quantity");
+                            GlobalCreateProdOrder.CreateProdOrder(Item, Item."Production Quantity");
                         until Item.Next() = 0;
-
                     Message('Successfully created %1 production orders.', SelectionCount);
                 end;
             }
         }
     }
+    var
+        GlobalCreateProdOrder: Codeunit "CalcProdOrder";
 
     trigger OnOpenPage()
     begin

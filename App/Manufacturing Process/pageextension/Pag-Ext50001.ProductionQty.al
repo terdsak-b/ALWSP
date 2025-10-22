@@ -8,7 +8,7 @@ pageextension 50001 ProductionQty extends "Item Card"
     {
         addlast(Replenishment_Production)
         {
-            field("Prodution Quantity"; Rec."Production Quantity")
+            field("Production Quantity"; Rec."Production Quantity")
             {
                 ApplicationArea = All;
             }
