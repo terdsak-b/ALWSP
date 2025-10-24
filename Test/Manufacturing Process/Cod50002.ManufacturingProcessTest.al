@@ -13,11 +13,10 @@ codeunit 50002 "Manufacturing Process Testing"
         GlobalCalcProdOrder: Codeunit "CalcProdOrder";
         GlobalProdOrder: Record "Production Order";
         GlobalProdOrderLine: Record "Prod. Order Line";
-        GlobalValurShouldBeMatch: Label 'Value should be matched';
+        GlobalValueShouldBeMatch: Label 'Value should be matched';
         GlobalErrorMsg: Label 'No items found for testing. Please ensure there are items set up with the required manufacturing process settings.';
         GlobalQty: Integer;
         GlobalNegativeQty: Integer;
-        ManufacturingPage: TestPage "Manufacturing Item";
         ProdOrderPage: TestPage "Released Production Order";
 
     local procedure Initialize()
@@ -25,14 +24,12 @@ codeunit 50002 "Manufacturing Process Testing"
 
         GlobalItemTemp.DeleteAll();
         GlobalItemTemp.Reset();
-        GlobalQty := 1;
+        GlobalQty := 4;
         GlobalNegativeQty := -1;
 
         SetupItemNumberFilter();
     end;
-
     // [FEATURE] Production Order Creation with Manufacturing Process Setup
-
     [Test]
     procedure TestItemCreationWithManufacturingSetupSingleProdOrder()
     begin
@@ -41,6 +38,7 @@ codeunit 50002 "Manufacturing Process Testing"
         // Get first test item from the temporary table
         if GlobalItemTemp.FindFirst() then begin
             GlobalItem.Get(GlobalItemTemp."No.");
+            GlobalItem.FindFirst();
             GlobalItem."Production Quantity" := GlobalQty;
             GlobalItem.Modify();
 
@@ -48,16 +46,22 @@ codeunit 50002 "Manufacturing Process Testing"
             GlobalCalcProdOrder.CreateProdOrder(GlobalItem, GlobalItem."Production Quantity");
 
             // [THEN] Production order should be created with correct setup
-            GlobalProdOrder.Reset();
-            GlobalProdOrder.SetRange("Source Type", GlobalProdOrder."Source Type"::Item);
             GlobalProdOrder.SetRange("Source No.", GlobalItem."No.");
+            GlobalProdOrder.SetRange("Source Type", GlobalProdOrder."Source Type"::Item);
             GlobalProdOrder.SetRange(Status, GlobalProdOrder.Status::Released);
             GlobalProdOrder.FindLast();
+            GlobalProdOrderLine.SetRange("Prod. Order No.", GlobalProdOrder."No.");
+            GlobalProdOrderLine.FindLast();
 
             // Verify production order details
-            GlobalAssert.AreEqual(GlobalItem."No.", GlobalProdOrder."Source No.", GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalItem."Production Quantity", GlobalProdOrder.Quantity, GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalProdOrder.Status::Released, GlobalProdOrder.Status, GlobalValurShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."No.", GlobalProdOrder."Source No.", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Production Quantity", GlobalProdOrder.Quantity, GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalProdOrder.Status::Released, GlobalProdOrder.Status, GlobalValueShouldBeMatch);
+
+            // Verify Routing No. and BOM No. are correctly assigned
+            GlobalAssert.AreEqual(GlobalItem."Routing No.", GlobalProdOrder."Routing No.", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Production BOM No.", GlobalProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
+
         end else begin
             asserterror Error(GlobalErrorMsg);
             GlobalAssert.ExpectedError(GlobalErrorMsg);
@@ -65,18 +69,16 @@ codeunit 50002 "Manufacturing Process Testing"
     end;
 
     [Test]
-    procedure TestItemCreationWithManufacturingSetupMutipleProdOrder()
-    var
-        ErrorMsg: Text;
+    procedure TestItemCreationWithManufacturingSetupMultipleProdOrder()
     begin
         // [GIVEN] Initialize test items and production quantity of items to create
         Initialize();
 
         // Get all items from temporary table
-        if GlobalItemTemp.FindSet() then
+        if GlobalItemTemp.FindSet() then begin
             repeat
                 GlobalItem.Reset();
-                GlobalItem.SetFilter("No.", GlobalItemTemp."No.");
+                GlobalItem.SetRange("No.", GlobalItemTemp."No.");
                 if GlobalItem.FindSet() then begin
                     repeat
                         // [WHEN] Setup and create production orders for test items
@@ -84,32 +86,128 @@ codeunit 50002 "Manufacturing Process Testing"
                         GlobalItem."Production Quantity" := GlobalQty;
                         GlobalItem.Modify();
                         GlobalCalcProdOrder.CreateProdOrder(GlobalItem, GlobalItem."Production Quantity");
+
+                        // [THEN] Production orders are created successfully
                         GlobalProdOrder.SetRange("Source No.", GlobalItem."No.");
+                        GlobalProdOrder.SetRange("Source Type", GlobalProdOrder."Source Type"::Item);
+                        GlobalProdOrder.SetRange(Status, GlobalProdOrder.Status::Released);
                         GlobalProdOrder.FindLast();
                         GlobalProdOrderLine.SetRange("Prod. Order No.", GlobalProdOrder."No.");
                         GlobalProdOrderLine.FindLast();
 
-                        // [THEN] Production orders are created successfully
-                        GlobalAssert.AreEqual(GlobalItem."No.", GlobalProdOrder."Source No.", GlobalValurShouldBeMatch);
-                        GlobalAssert.AreEqual(GlobalItem."Production Quantity", GlobalProdOrder.Quantity, GlobalValurShouldBeMatch);
-                        GlobalAssert.AreEqual(GlobalProdOrder."No.", GlobalProdOrderLine."Prod. Order No.", GlobalValurShouldBeMatch);
-                        GlobalAssert.AreEqual(GlobalProdOrder.Quantity, GlobalProdOrderLine.Quantity, GlobalValurShouldBeMatch);
-
-                        // Verify Replenishment System is and Manufacturing Policy are correctly assigned
-                        GlobalAssert.AreEqual(GlobalItem."Replenishment System", GlobalItem."Replenishment System", GlobalValurShouldBeMatch);
-                        GlobalAssert.AreEqual(GlobalItem."Manufacturing Policy", GlobalItem."Manufacturing Policy", GlobalValurShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."No.", GlobalProdOrder."Source No.", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Production Quantity", GlobalProdOrder.Quantity, GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalProdOrder."No.", GlobalProdOrderLine."Prod. Order No.", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalProdOrder.Quantity, GlobalProdOrderLine.Quantity, GlobalValueShouldBeMatch);
 
                         // Verify Routing No. and BOM No. are correctly assigned
-                        GlobalAssert.AreEqual(GlobalItem."Routing No.", GlobalProdOrder."Routing No.", GlobalValurShouldBeMatch);
-                        GlobalAssert.AreEqual(GlobalItem."Production BOM No.", GlobalProdOrderLine."Production BOM No.", GlobalValurShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Routing No.", GlobalProdOrder."Routing No.", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Production BOM No.", GlobalProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
                     until GlobalItem.Next() = 0;
-                end else begin
-                    // [THEN] Item not found in the database
-                    ErrorMsg := StrSubstNo('Item with No. %1 not found in the database.', GlobalItemTemp."No.");
-                    asserterror Error(ErrorMsg);
-                    GlobalAssert.ExpectedError(ErrorMsg);
                 end;
             until GlobalItemTemp.Next() = 0;
+        end else begin
+            asserterror Error(GlobalErrorMsg);
+            GlobalAssert.ExpectedError(GlobalErrorMsg);
+        end;
+    end;
+
+    [Test]
+    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    procedure TestManufacturingItemUIWorkflowSingleProdOrder()
+    var
+        ManufacturingPage: TestPage "Manufacturing Item";
+    begin
+        // [GIVEN] Initialize setup and create test item
+        Initialize();
+        if GlobalItemTemp.FindFirst() then begin
+            GlobalItem.Reset();
+            GlobalItem.SetRange("No.", GlobalItemTemp."No.");
+            GlobalItem.FindFirst();
+            // [WHEN] Open Manufacturing Item page and create new item and Create Production Order from Item
+            ManufacturingPage.OpenEdit();
+            ManufacturingPage.GoToRecord(GlobalItem);
+            ManufacturingPage."Production Quantity".SetValue(GlobalQty);
+            ManufacturingPage.GoToRecord(GlobalItem);
+            ManufacturingPage.CreateSelectProductionOrder.Invoke();
+            ManufacturingPage.Close();
+
+            // [THEN] Verify item was created with correct setup
+            GlobalItem.Get(GlobalItemTemp."No.");
+            GlobalAssert.AreEqual(GlobalQty, GlobalItem."Production Quantity", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Manufacturing Policy"::"Make-to-Order", GlobalItem."Manufacturing Policy", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Replenishment System"::"Prod. Order", GlobalItem."Replenishment System", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Reordering Policy"::Order, GlobalItem."Reordering Policy", GlobalValueShouldBeMatch);
+
+            GlobalProdOrder.SetRange("Source No.", GlobalItem."No.");
+            GlobalProdOrder.SetRange("Source Type", GlobalProdOrder."Source Type"::Item);
+            GlobalProdOrder.SetRange(Status, GlobalProdOrder.Status::Released);
+            GlobalProdOrder.FindLast();
+            GlobalProdOrderLine.SetRange("Prod. Order No.", GlobalProdOrder."No.");
+            GlobalProdOrderLine.FindLast();
+
+            // Verify Production Order 
+            GlobalAssert.AreEqual(GlobalItem."No.", GlobalProdOrder."Source No.", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Production Quantity", GlobalProdOrder.Quantity, GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Routing No.", GlobalProdOrder."Routing No.", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Production BOM No.", GlobalProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
+
+            // Close pages
+        end else begin
+            asserterror Error(GlobalErrorMsg);
+            GlobalAssert.ExpectedError(GlobalErrorMsg);
+        end;
+    end;
+
+    [Test]
+    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    procedure TestManufacturingItemUIWorkflowMultipleProdOrder()
+    var
+        ManufacturingPage: TestPage "Manufacturing Item";
+    begin
+        // [GIVEN] Initialize setup and create test items
+        Initialize();
+        if GlobalItemTemp.FindSet() then begin
+            repeat
+                GlobalItem.Reset();
+                GlobalItem.SetRange("No.", GlobalItemTemp."No.");
+
+                if GlobalItem.FindSet() then begin
+                    repeat
+                        // [WHEN] Create Production Order from Item
+                        ManufacturingPage.OpenEdit();
+                        ManufacturingPage.GoToRecord(GlobalItem);
+                        ManufacturingPage."Production Quantity".SetValue(GlobalQty);
+                        ManufacturingPage.CreateProductionOrder.Invoke();
+                        ManufacturingPage.Close();
+
+                        // [THEN] Verify item was created with correct setup 
+                        GlobalItem.Get(GlobalItem."No.");
+                        GlobalAssert.AreEqual(GlobalQty, GlobalItem."Production Quantity", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Manufacturing Policy"::"Make-to-Order", GlobalItem."Manufacturing Policy", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Replenishment System"::"Prod. Order", GlobalItem."Replenishment System", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Reordering Policy"::Order, GlobalItem."Reordering Policy", GlobalValueShouldBeMatch);
+
+                        GlobalProdOrder.SetRange("Source No.", GlobalItem."No.");
+                        GlobalProdOrder.SetRange("Source Type", GlobalProdOrder."Source Type"::Item);
+                        GlobalProdOrder.SetRange(Status, GlobalProdOrder.Status::Released);
+                        GlobalProdOrder.FindLast();
+                        GlobalProdOrderLine.SetRange("Prod. Order No.", GlobalProdOrder."No.");
+                        GlobalProdOrderLine.FindLast();
+
+                        // Verify Production Order
+                        GlobalAssert.AreEqual(GlobalItem."No.", GlobalProdOrder."Source No.", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Production Quantity", GlobalProdOrder.Quantity, GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Routing No.", GlobalProdOrder."Routing No.", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(GlobalItem."Production BOM No.", GlobalProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
+
+                    until GlobalItem.Next() = 0;
+                end;
+            until GlobalItemTemp.Next() = 0;
+        end else begin
+            asserterror Error(GlobalErrorMsg);
+            GlobalAssert.ExpectedError(GlobalErrorMsg);
+        end;
     end;
 
     [Test]
@@ -119,7 +217,7 @@ codeunit 50002 "Manufacturing Process Testing"
         Initialize();
         if GlobalItemTemp.FindFirst() then begin
             GlobalItem.Reset();
-            GlobalItem.SetFilter("No.", GlobalItemTemp."No.");
+            GlobalItem.SetRange("No.", GlobalItemTemp."No.");
             GlobalItem.FindFirst();
 
             // [WHEN] Set negative production quantity
@@ -127,54 +225,6 @@ codeunit 50002 "Manufacturing Process Testing"
 
             // [THEN] Validation error is raised for negative production quantity
             GlobalAssert.ExpectedError('Production Quantity cannot be less than 0.');
-        end else begin
-            asserterror Error(GlobalErrorMsg);
-            GlobalAssert.ExpectedError(GlobalErrorMsg);
-        end;
-    end;
-
-
-
-    [Test]
-    procedure TestManufacturingItemUIWorkflow()
-    begin
-        // [GIVEN] Initialize setup and create test item
-        Initialize();
-        if GlobalItemTemp.FindFirst() then begin
-            GlobalItem.Reset();
-            GlobalItem.Setfilter("No.", GlobalItemTemp."No.");
-            // [WHEN] Open Manufacturing Item page and create new item
-            ManufacturingPage.OpenEdit();
-            ManufacturingPage."Production Quantity".SetValue(GlobalQty);
-
-            // [THEN] Verify item was created with correct setup
-            GlobalItem.Get(GlobalItemTemp."No.");
-            GlobalAssert.AreEqual(GlobalQty, GlobalItem."Production Quantity", GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalItem."Manufacturing Policy"::"Make-to-Order", GlobalItem."Manufacturing Policy", GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalItem."Replenishment System"::"Prod. Order", GlobalItem."Replenishment System", GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalItem."Reordering Policy"::Order, GlobalItem."Reordering Policy", GlobalValurShouldBeMatch);
-
-            // [WHEN] Create Production Order from Item
-            GlobalCalcProdOrder.CreateProdOrder(GlobalItem, GlobalQty);
-
-            // [THEN] Verify Production Order UI
-            GlobalProdOrder.SetRange("Source Type", GlobalProdOrder."Source Type"::Item);
-            GlobalProdOrder.SetRange("Source No.", GlobalItem."No.");
-            GlobalProdOrder.FindLast();
-            GlobalProdOrderLine.SetRange("Prod. Order No.", GlobalProdOrder."No.");
-            GlobalProdOrderLine.FindLast();
-
-            ProdOrderPage.OpenEdit();
-            ProdOrderPage.GoToRecord(GlobalProdOrder);
-
-            GlobalAssert.AreEqual(GlobalItem."No.", GlobalProdOrder."Source No.", GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalQty, GlobalProdOrder.Quantity, GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalItem."Routing No.", GlobalProdOrder."Routing No.", GlobalValurShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalItem."Production BOM No.", GlobalProdOrderLine."Production BOM No.", GlobalValurShouldBeMatch);
-
-            // Close pages
-            ProdOrderPage.Close();
-            ManufacturingPage.Close();
         end else begin
             asserterror Error(GlobalErrorMsg);
             GlobalAssert.ExpectedError(GlobalErrorMsg);
@@ -200,5 +250,17 @@ codeunit 50002 "Manufacturing Process Testing"
             asserterror Error(GlobalErrorMsg);
             GlobalAssert.ExpectedError(GlobalErrorMsg);
         end;
+    end;
+
+    [ConfirmHandler]
+    procedure ConfirmHandler(Question: Text; var Answer: Boolean)
+    begin
+        Answer := true;
+    end;
+
+    [MessageHandler]
+    procedure MessageHandler(Message: Text)
+    begin
+        // Just to handle message pop-ups during tests
     end;
 }
