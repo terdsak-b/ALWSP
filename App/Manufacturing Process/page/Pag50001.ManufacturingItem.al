@@ -150,8 +150,8 @@ page 50001 "Manufacturing Item"
         if Rec.FindSet() then
             repeat
                 //Set Production Quantity default to 1 when open page
-                if Rec."Production Quantity" <> 1 then begin
-                    Rec."Production Quantity" := 1;
+                if Rec."Production Quantity" < 1 then begin
+                    Rec."Production Quantity" := 1.00;
                 end;
                 Rec.Modify();
             until Rec.Next() = 0;

@@ -6,11 +6,11 @@ tableextension 50001 "Production Qty" extends Item
 {
     fields
     {
-        field(50000; "Production Quantity"; Integer)
+        field(50000; "Production Quantity"; Decimal)
         {
             Caption = 'Production Quantity';
             DataClassification = ToBeClassified;
-            InitValue = 1;
+            InitValue = 1.00;
 
             trigger OnValidate()
             begin
