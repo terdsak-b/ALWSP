@@ -2,9 +2,9 @@ namespace ALWSP.ALWSP;
 using Microsoft.Manufacturing.Document;
 using Microsoft.Inventory.Item;
 
-codeunit 50001 CalcProdOrder
+codeunit 50001 CreateProdOrder
 {
-    procedure CreateProdOrder(Item: Record Item; Quantity: Integer)
+    procedure CreateProdOrder(Item: Record Item; Quantity: Integer): Code[20]
     var
         ProdOrder: Record "Production Order";
         Window: Dialog;
@@ -37,7 +37,10 @@ codeunit 50001 CalcProdOrder
         Window.Update(2, StrSubstNo('Completed - Order No. %1', ProdOrder."No."));
         Sleep(500);
         Window.Close();
+
+        exit(ProdOrder."No."); // Return Production Order No
     end;
+
 
     local procedure RefreshProdOrder(var ProductionOrder: Record "Production Order"; Forward: Boolean; CalcLines: Boolean; CalcRoutings: Boolean; CalcComponents: Boolean; CreateInbRqst: Boolean)
     var

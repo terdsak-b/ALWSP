@@ -76,7 +76,7 @@ page 50100 "Inventory by Location"
     begin
         ItemLedgerEntries.SetRange("Item No.", GlobalItemNo);
         ItemLedgerEntries.SetRange("Location Code", GlobalLocationCode);
-        PAGE.Run(PAGE::"Item Ledger Entries", ItemLedgerEntries);
+        PAGE.RunModal(PAGE::"Item Ledger Entries", ItemLedgerEntries);
     end;
 
     internal procedure UpdateInventoryQuantity(ItemNo: Code[20]; LocationCode: Code[20])

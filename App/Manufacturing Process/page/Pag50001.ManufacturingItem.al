@@ -1,6 +1,7 @@
 namespace ALWSP.ALWSP;
 
 using Microsoft.Inventory.Item;
+using Microsoft.Manufacturing.Document;
 using Microsoft.Manufacturing.Setup;
 
 page 50001 "Manufacturing Item"
@@ -10,6 +11,7 @@ page 50001 "Manufacturing Item"
     PageType = List;
     SourceTable = Item;
     UsageCategory = Lists;
+    SaveValues = true;
 
     layout
     {
@@ -22,10 +24,17 @@ page 50001 "Manufacturing Item"
                     ApplicationArea = All;
                     Editable = false;
                 }
-                field("Production Quantity"; Rec."Production Quantity")
+                field("Production Quantity"; GlobalQty)
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the quantity to be produced for the item (Default 1).';
+
+                    trigger OnValidate()
+                    begin
+                        if GlobalQty <= 0 then
+                            Error('Production Quantity cannot be less than 0.');
+                        GlobalQtyDict.Set(Rec."No.", GlobalQty);
+                    end;
                 }
                 field("Description"; Rec.Description)
                 {
@@ -75,7 +84,7 @@ page 50001 "Manufacturing Item"
     {
         area(Processing)
         {
-            action(CreateProductionOrder)
+            action(CreateAllProductionOrder)
             {
                 ApplicationArea = Manufacturing;
                 Caption = 'Create All of Production Order';
@@ -86,16 +95,34 @@ page 50001 "Manufacturing Item"
                 ToolTip = 'Creates a new production order for the selected item.';
 
                 trigger OnAction()
-                var
-                    ConfirmMsg: Label 'Do you want to create production orders for all listed items?';
                 begin
-                    if not Confirm(ConfirmMsg) then
+                    GlobalConfirmMsg := 'Do you want to create production orders for all listed items?';
+                    if not Confirm(GlobalConfirmMsg) then begin
+                        //Reset GlobalQtyDict values to 1 for all items
+                        if Rec.FindSet() then
+                            repeat
+                                GlobalQty := 1.00;
+                                GlobalQtyDict.Set(Rec."No.", GlobalQty);
+                            until Rec.Next() = 0;
                         exit;
+                    end;
                     if Rec.FindSet() then
                         repeat
-                            GlobalCreateProdOrder.CreateProdOrder(Rec, Rec."Production Quantity");
+                            GlobalProdOrderNo := GlobalCreateProdOrder.CreateProdOrder(Rec, GlobalQtyDict.Get(Rec."No."));
+
+                            // While processing items
+                            BuildMessageProdOrderNo();
                         until Rec.Next() = 0;
-                    Message('Created production orders successfully.');
+
+                    GlobalQuestionMsg := GlobalProdOrederNoMessage + GlobalNavQstMsg;
+                    if Confirm(GlobalQuestionMsg) then begin
+                        CurrPage.Close();
+                        GlobalProdOrder.FindLast();
+                        Page.RunModal(Page::"Production Order List", GlobalProdOrder);
+                    end else begin
+                        CurrPage.Close();
+                        Page.Run(Page::"Manufacturing Item"); // Refresh the manufacturing item page for set Global variables to default
+                    end;
                 end;
             }
 
@@ -113,7 +140,7 @@ page 50001 "Manufacturing Item"
                 var
                     Item: Record Item;
                     SelectionCount: Integer;
-                    ConfirmMsg: Text;
+
                 begin
                     CurrPage.SetSelectionFilter(Item);
                     SelectionCount := Item.Count;
@@ -121,21 +148,50 @@ page 50001 "Manufacturing Item"
                     if SelectionCount = 0 then
                         Error('Please select one or more items.');
 
-                    ConfirmMsg := StrSubstNo('Do you want to create production orders for %1 selected items?', SelectionCount);
-                    if not Confirm(ConfirmMsg) then
+                    GlobalConfirmMsg := StrSubstNo('Do you want to create production orders for %1 selected items?', SelectionCount);
+                    if not Confirm(GlobalConfirmMsg) then begin
+                        //Reset GlobalQtyDict values to 1 for selected items
+                        if Item.FindSet() then
+                            repeat
+                                GlobalQty := 1.00;
+                                GlobalQtyDict.Set(Item."No.", GlobalQty);
+                            until Item.Next() = 0;
                         exit;
-
+                    end;
                     if Item.FindSet() then
                         repeat
-                            GlobalCreateProdOrder.CreateProdOrder(Item, Item."Production Quantity");
+                            GlobalProdOrderNo := GlobalCreateProdOrder.CreateProdOrder(Item, GlobalQtyDict.Get(Item."No."));
+                            // While processing items
+                            BuildMessageProdOrderNo();
                         until Item.Next() = 0;
-                    Message('Successfully created %1 production orders.', SelectionCount);
+
+                    GlobalQuestionMsg := GlobalProdOrederNoMessage + GlobalNavQstMsg;
+
+                    if Confirm(GlobalQuestionMsg) then begin
+                        CurrPage.Close();
+                        GlobalProdOrder.FindLast();
+                        Page.RunModal(Page::"Production Order List", GlobalProdOrder);
+                    end else begin
+                        CurrPage.Close();
+                        Page.Run(Page::"Manufacturing Item"); // Refresh the manufacturing item page for set Global variables to default
+                    end;
                 end;
             }
         }
     }
     var
-        GlobalCreateProdOrder: Codeunit "CalcProdOrder";
+        GlobalCreateProdOrder: Codeunit CreateProdOrder;
+        GlobalProdOrder: Record "Production Order";
+        GlobalQty: Decimal;
+        GlobalQtyDict: Dictionary of [Code[20], Decimal];
+        GlobalProdOrderNo: Code[20];
+        GlobalConfirmMsg: Text;
+        GlobalFirstItemNo: Code[20];
+        GlobalLastItemNo: Code[20];
+        GlobalProcessedCount: Integer;
+        GlobalProdOrederNoMessage: Text;
+        GlobalQuestionMsg: Text;
+        GlobalNavQstMsg: Label '\Do you want to view the created production orders?';
 
     trigger OnOpenPage()
     begin
@@ -150,10 +206,31 @@ page 50001 "Manufacturing Item"
         if Rec.FindSet() then
             repeat
                 //Set Production Quantity default to 1 when open page
-                if Rec."Production Quantity" < 1 then begin
-                    Rec."Production Quantity" := 1.00;
+                if not GlobalQtyDict.ContainsKey(Rec."No.") then begin
+                    if GlobalQty <> 1 then
+                        GlobalQty := 1.00;
+                    GlobalQtyDict.Add(Rec."No.", GlobalQty);
                 end;
-                Rec.Modify();
             until Rec.Next() = 0;
+    end;
+
+    local procedure BuildMessageProdOrderNo()
+    begin
+        // While processing items
+        case GlobalProcessedCount of
+            0:  // First item
+                GlobalFirstItemNo := GlobalProdOrderNo;
+        end;
+        GlobalLastItemNo := GlobalProdOrderNo;
+        GlobalProcessedCount += 1;
+        case GlobalProcessedCount of
+            1:
+                GlobalProdOrederNoMessage := StrSubstNo('Created production order: %1', GlobalFirstItemNo);
+            else
+                GlobalProdOrederNoMessage := StrSubstNo('Created %1 production orders: %2...%3',
+                    GlobalProcessedCount,
+                    GlobalFirstItemNo,
+                    GlobalLastItemNo);
+        end;
     end;
 }

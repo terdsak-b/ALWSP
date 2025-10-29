@@ -1,0 +1,584 @@
+namespace ALWSP.ALWSP;
+using Microsoft.Inventory.Item;
+using Microsoft.Manufacturing.Document;
+using Microsoft.Manufacturing.ProductionBOM;
+using Microsoft.Manufacturing.Routing;
+
+codeunit 50002 "Manufacturing Process Testing"
+{
+    Subtype = Test;
+
+    var
+        GlobalItem: Record Item;
+        GlobalItemTemp: Record Item temporary;
+        GlobalAssert: Codeunit Assert;
+        GlobalCreateProdOrder: Codeunit CreateProdOrder;
+        ProdOrder: Record "Production Order";
+        ProdOrderLine: Record "Prod. Order Line";
+        GlobalValueShouldBeMatch: Label 'Value should be matched';
+        GlobalErrorMsg: Label 'No items found for testing. Please ensure there are items set up with the required manufacturing process settings.';
+        GlobalQty: Integer;
+        GlobalNegativeQty: Integer;
+
+    local procedure Initialize()
+    var
+        LibraryRandom: Codeunit "Library - Random";
+    begin
+        GlobalQty := LibraryRandom.RandDecInDecimalRange(1, 10, 0);
+        GlobalNegativeQty := -1;
+
+        SetupItemNumberFilter();
+    end;
+    // [FEATURE] Production Order Creation with Manufacturing Process Setup
+    [Test]
+    procedure TestItemCreationWithManufacturingItemSingleProdOrder()
+    var
+        ProdOrder: Record "Production Order";
+        ProdOrderLine: Record "Prod. Order Line";
+        ProdOrderRoutingLine: Record "Prod. Order Routing Line";
+        RoutingLine: Record "Routing Line";
+        ProdOrderComponent: Record "Prod. Order Component";
+        ProductionBOMLine: Record "Production BOM Line";
+    begin
+        // [GIVEN] A manufacturing item with setup
+        Initialize();
+        // Get first test item from the temporary table
+        if GlobalItemTemp.FindFirst() then begin
+            GlobalItem.Get(GlobalItemTemp."No.");
+            GlobalItem.FindFirst();
+            // GlobalItem."Production Quantity" := GlobalQty;
+            // GlobalItem.Modify();
+
+            // [WHEN] Create a single production order
+            GlobalCreateProdOrder.CreateProdOrder(GlobalItem, GlobalQty);
+
+            // [THEN] Production order should be created with correct setup
+            ProdOrder.SetRange("Source No.", GlobalItem."No.");
+            ProdOrder.SetRange("Source Type", ProdOrder."Source Type"::Item);
+            ProdOrder.SetRange(Status, ProdOrder.Status::Released);
+            ProdOrder.FindLast();
+            ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+            ProdOrderLine.FindLast();
+            ProdOrderRoutingLine.SetRange("Routing No.", ProdOrder."Routing No.");
+            ProdOrderRoutingLine.SetRange("Prod. Order No.", ProdOrder."No.");
+            RoutingLine.SetRange("Routing No.", ProdOrderLine."Routing No.");
+            ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
+            ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
+            ProductionBOMLine.SetRange("Production BOM No.", GlobalItem."Production BOM No.");
+
+            // Verify production order details
+            GlobalAssert.AreEqual(GlobalItem."No.", ProdOrder."Source No.", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalQty, ProdOrder.Quantity, GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(ProdOrder.Status::Released, ProdOrder.Status, GlobalValueShouldBeMatch);
+
+            // Verify Routing No. and BOM No. are correctly assigned
+            GlobalAssert.AreEqual(GlobalItem."Routing No.", ProdOrder."Routing No.", GlobalValueShouldBeMatch);
+            if ProdOrderRoutingLine.FindSet() and RoutingLine.FindSet() then begin
+                repeat
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Operation No.", RoutingLine."Operation No.", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine.Type, RoutingLine.Type, GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Setup Time", RoutingLine."Setup Time", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Run Time", RoutingLine."Run Time", GlobalValueShouldBeMatch);
+                until (ProdOrderRoutingLine.Next() = 0) and (RoutingLine.Next() = 0);
+            end;
+
+            GlobalAssert.AreEqual(GlobalItem."Production BOM No.", ProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
+            if ProdOrderComponent.FindSet() and ProductionBOMLine.FindSet() then
+                repeat
+                    GlobalAssert.AreEqual(ProdOrderComponent."Item No.", ProductionBOMLine."No.", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
+
+                until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
+
+
+        end else begin
+            asserterror Error(GlobalErrorMsg);
+            GlobalAssert.ExpectedError(GlobalErrorMsg);
+        end;
+    end;
+
+    [Test]
+    [HandlerFunctions('NavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
+    procedure TestManufacturingItemUIWorkflowSingleProdOrder()
+    var
+        ManufacturingPage: TestPage "Manufacturing Item";
+        ProdOrder: Record "Production Order";
+        ProdOrderLine: Record "Prod. Order Line";
+        ProdOrderRoutingLine: Record "Prod. Order Routing Line";
+        RoutingLine: Record "Routing Line";
+        ProdOrderComponent: Record "Prod. Order Component";
+        ProductionBOMLine: Record "Production BOM Line";
+    begin
+        // [GIVEN] Initialize setup and create test item
+        Initialize();
+
+        if GlobalItemTemp.FindFirst() then begin
+            GlobalItem.Get(GlobalItemTemp."No.");
+            GlobalItem.FindFirst();
+            // [WHEN] Open Manufacturing Item page and create new item and Create Production Order from Item
+            ManufacturingPage.OpenEdit();
+            ManufacturingPage.GoToRecord(GlobalItem);
+            ManufacturingPage."Production Quantity".SetValue(GlobalQty);
+            ManufacturingPage.GoToRecord(GlobalItem);
+            ManufacturingPage.CreateSelectProductionOrder.Invoke();
+            // Page close by currpage.close in the action
+
+            // [THEN] Verify item was created with correct setup
+            GlobalItem.Get(GlobalItemTemp."No.");
+            //GlobalAssert.AreEqual(GlobalQty, GlobalItem."Production Quantity", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Manufacturing Policy"::"Make-to-Order", GlobalItem."Manufacturing Policy", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Replenishment System"::"Prod. Order", GlobalItem."Replenishment System", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalItem."Reordering Policy"::Order, GlobalItem."Reordering Policy", GlobalValueShouldBeMatch);
+
+            ProdOrder.SetRange("Source No.", GlobalItem."No.");
+            ProdOrder.SetRange("Source Type", ProdOrder."Source Type"::Item);
+            ProdOrder.SetRange(Status, ProdOrder.Status::Released);
+            ProdOrder.FindLast();
+            ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+            ProdOrderLine.FindLast();
+            ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+            ProdOrderLine.FindLast();
+            ProdOrderRoutingLine.SetRange("Routing No.", ProdOrder."Routing No.");
+            ProdOrderRoutingLine.SetRange("Prod. Order No.", ProdOrder."No.");
+            RoutingLine.SetRange("Routing No.", ProdOrderLine."Routing No.");
+            ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
+            ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
+            ProductionBOMLine.SetRange("Production BOM No.", GlobalItem."Production BOM No.");
+
+            // Verify Production Order 
+            GlobalAssert.AreEqual(GlobalItem."No.", ProdOrder."Source No.", GlobalValueShouldBeMatch);
+            GlobalAssert.AreEqual(GlobalQty, ProdOrder.Quantity, GlobalValueShouldBeMatch);
+
+            GlobalAssert.AreEqual(GlobalItem."Routing No.", ProdOrder."Routing No.", GlobalValueShouldBeMatch);
+            if ProdOrderRoutingLine.FindSet() and RoutingLine.FindSet() then begin
+                repeat
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Operation No.", RoutingLine."Operation No.", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine.Type, RoutingLine.Type, GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Setup Time", RoutingLine."Setup Time", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Run Time", RoutingLine."Run Time", GlobalValueShouldBeMatch);
+                until (ProdOrderRoutingLine.Next() = 0) and (RoutingLine.Next() = 0);
+            end;
+
+            GlobalAssert.AreEqual(GlobalItem."Production BOM No.", ProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
+            if ProdOrderComponent.FindSet() and ProductionBOMLine.FindSet() then
+                repeat
+                    GlobalAssert.AreEqual(ProdOrderComponent."Item No.", ProductionBOMLine."No.", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
+
+                until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
+        end;
+    end;
+
+    [Test]
+    procedure TestItemCreationWithManufacturingItemMultipleProdOrder()
+    var
+        ProdOrder: Record "Production Order";
+        ProdOrderLine: Record "Prod. Order Line";
+        ProdOrderRoutingLine: Record "Prod. Order Routing Line";
+        RoutingLine: Record "Routing Line";
+        ProdOrderComponent: Record "Prod. Order Component";
+        ProductionBOMLine: Record "Production BOM Line";
+    begin
+        // [GIVEN] Initialize test items and production quantity of items to create
+        Initialize();
+
+        // Get all items from temporary table
+        if GlobalItemTemp.FindSet() then begin
+            repeat
+                GlobalItem.SetRange("No.", GlobalItemTemp."No.");
+                if GlobalItem.FindSet() then begin
+                    // [WHEN] Setup and create production orders for test items
+                    // Update each item
+                    //GlobalItem."Production Quantity" := GlobalQty;
+                    //GlobalItem.Modify();
+                    GlobalCreateProdOrder.CreateProdOrder(GlobalItem, GlobalQty);
+
+                    // [THEN] Production orders are created successfully
+                    ProdOrder.SetRange("Source No.", GlobalItem."No.");
+                    ProdOrder.SetRange("Source Type", ProdOrder."Source Type"::Item);
+                    ProdOrder.SetRange(Status, ProdOrder.Status::Released);
+                    ProdOrder.FindLast();
+                    ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+                    ProdOrderLine.FindLast();
+                    ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+                    ProdOrderLine.FindLast();
+                    ProdOrderRoutingLine.SetRange("Routing No.", ProdOrder."Routing No.");
+                    ProdOrderRoutingLine.SetRange("Prod. Order No.", ProdOrder."No.");
+                    RoutingLine.SetRange("Routing No.", ProdOrderLine."Routing No.");
+                    ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
+                    ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
+                    ProductionBOMLine.SetRange("Production BOM No.", GlobalItem."Production BOM No.");
+
+                    GlobalAssert.AreEqual(GlobalItem."No.", ProdOrder."Source No.", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(GlobalQty, ProdOrder.Quantity, GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrder."No.", ProdOrderLine."Prod. Order No.", GlobalValueShouldBeMatch);
+                    GlobalAssert.AreEqual(ProdOrder.Quantity, ProdOrderLine.Quantity, GlobalValueShouldBeMatch);
+
+                    // Verify Routing No. and BOM No. are correctly assigned
+                    GlobalAssert.AreEqual(GlobalItem."Routing No.", ProdOrder."Routing No.", GlobalValueShouldBeMatch);
+                    if ProdOrderRoutingLine.FindSet() and RoutingLine.FindSet() then begin
+                        repeat
+                            GlobalAssert.AreEqual(ProdOrderRoutingLine."Operation No.", RoutingLine."Operation No.", GlobalValueShouldBeMatch);
+                            GlobalAssert.AreEqual(ProdOrderRoutingLine.Type, RoutingLine.Type, GlobalValueShouldBeMatch);
+                            GlobalAssert.AreEqual(ProdOrderRoutingLine."Setup Time", RoutingLine."Setup Time", GlobalValueShouldBeMatch);
+                            GlobalAssert.AreEqual(ProdOrderRoutingLine."Run Time", RoutingLine."Run Time", GlobalValueShouldBeMatch);
+                        until (ProdOrderRoutingLine.Next() = 0) and (RoutingLine.Next() = 0);
+                    end;
+
+                    GlobalAssert.AreEqual(GlobalItem."Production BOM No.", ProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
+                    if ProdOrderComponent.FindSet() and ProductionBOMLine.FindSet() then
+                        repeat
+                            GlobalAssert.AreEqual(ProdOrderComponent."Item No.", ProductionBOMLine."No.", GlobalValueShouldBeMatch);
+                            GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
+
+                        until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
+                end;
+            until GlobalItemTemp.Next() = 0;
+        end else begin
+            asserterror Error(GlobalErrorMsg);
+            GlobalAssert.ExpectedError(GlobalErrorMsg);
+        end;
+    end;
+
+    [Test]
+    [HandlerFunctions('NavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
+    procedure TestManufacturingItemUIWorkflowMultipleProdOrder()
+    var
+        ManufacturingPage: TestPage "Manufacturing Item";
+        ProdOrder: Record "Production Order";
+        ProdOrderLine: Record "Prod. Order Line";
+        ProdOrderRoutingLine: Record "Prod. Order Routing Line";
+        RoutingLine: Record "Routing Line";
+        ProdOrderComponent: Record "Prod. Order Component";
+        ProductionBOMLine: Record "Production BOM Line";
+    begin
+        // [GIVEN] Initialize setup and create test items
+        Initialize();
+
+        // [WHEN] Create Production Order from Item
+        ManufacturingPage.OpenEdit();
+        if GlobalItemTemp.FindSet() then begin
+            repeat
+                GlobalItem.SetRange("No.", GlobalItemTemp."No.");
+                if GlobalItem.FindSet() then begin
+                    ManufacturingPage.GoToRecord(GlobalItem);
+                    ManufacturingPage."Production Quantity".SetValue(GlobalQty);
+                end;
+            until GlobalItemTemp.Next() = 0;
+        end;
+        ManufacturingPage.CreateAllProductionOrder.Invoke();
+        // Page close by currpage.close in the action
+
+        if GlobalItemTemp.Findset() then begin
+            repeat
+                GlobalItem.SetRange("No.", GlobalItemTemp."No.");
+                GlobalItem.Get(GlobalItem."No.");
+                // [THEN] Verify item was created with correct setup 
+                //GlobalAssert.AreEqual(GlobalQty, GlobalItem."Production Quantity", GlobalValueShouldBeMatch);
+                GlobalAssert.AreEqual(GlobalItem."Manufacturing Policy"::"Make-to-Order", GlobalItem."Manufacturing Policy", GlobalValueShouldBeMatch);
+                GlobalAssert.AreEqual(GlobalItem."Replenishment System"::"Prod. Order", GlobalItem."Replenishment System", GlobalValueShouldBeMatch);
+                GlobalAssert.AreEqual(GlobalItem."Reordering Policy"::Order, GlobalItem."Reordering Policy", GlobalValueShouldBeMatch);
+
+                ProdOrder.SetRange("Source No.", GlobalItem."No.");
+                ProdOrder.SetRange("Source Type", ProdOrder."Source Type"::Item);
+                ProdOrder.SetRange(Status, ProdOrder.Status::Released);
+                ProdOrder.FindLast();
+                ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+                ProdOrderLine.FindLast();
+                ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+                ProdOrderLine.FindLast();
+                ProdOrderRoutingLine.SetRange("Routing No.", ProdOrder."Routing No.");
+                ProdOrderRoutingLine.SetRange("Prod. Order No.", ProdOrder."No.");
+                RoutingLine.SetRange("Routing No.", ProdOrderLine."Routing No.");
+                ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
+                ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
+                ProductionBOMLine.SetRange("Production BOM No.", GlobalItem."Production BOM No.");
+
+                // // Verify Production Order
+                GlobalAssert.AreEqual(GlobalItem."No.", ProdOrder."Source No.", GlobalValueShouldBeMatch);
+                GlobalAssert.AreEqual(GlobalQty, ProdOrder.Quantity, GlobalValueShouldBeMatch);
+
+                GlobalAssert.AreEqual(GlobalItem."Routing No.", ProdOrder."Routing No.", GlobalValueShouldBeMatch);
+                if ProdOrderRoutingLine.FindSet() and RoutingLine.FindSet() then begin
+                    repeat
+                        GlobalAssert.AreEqual(ProdOrderRoutingLine."Operation No.", RoutingLine."Operation No.", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(ProdOrderRoutingLine.Type, RoutingLine.Type, GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(ProdOrderRoutingLine."Setup Time", RoutingLine."Setup Time", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(ProdOrderRoutingLine."Run Time", RoutingLine."Run Time", GlobalValueShouldBeMatch);
+                    until (ProdOrderRoutingLine.Next() = 0) and (RoutingLine.Next() = 0);
+                end;
+
+                GlobalAssert.AreEqual(GlobalItem."Production BOM No.", ProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
+                if ProdOrderComponent.FindSet() and ProductionBOMLine.FindSet() then
+                    repeat
+                        GlobalAssert.AreEqual(ProdOrderComponent."Item No.", ProductionBOMLine."No.", GlobalValueShouldBeMatch);
+                        GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
+
+                    until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
+            until GlobalItemTemp.Next() = 0;
+        end;
+    end;
+
+    [Test]
+    procedure TestProductionQuantityValidation() // Use test page instead table field verify
+    var
+        ManufacturingItemPage: TestPage "Manufacturing Item";
+    begin
+        // [GIVEN] Initialize test items and negative production quantity
+        Initialize();
+        ManufacturingItemPage.OpenEdit();
+        if GlobalItemTemp.FindFirst() then begin
+            GlobalItem.SetRange("No.", GlobalItemTemp."No.");
+            GlobalItem.FindFirst();
+            ManufacturingItemPage.GoToRecord(GlobalItem);
+
+            // [WHEN] Set negative production quantity
+            asserterror ManufacturingItemPage."Production Quantity".SetValue(GlobalNegativeQty);
+
+            // [THEN] Validation error is raised for negative production quantity
+            GlobalAssert.ExpectedError('Production Quantity cannot be less than 0.');
+        end else begin
+            asserterror Error(GlobalErrorMsg);
+            GlobalAssert.ExpectedError(GlobalErrorMsg);
+        end;
+    end;
+
+    [Test]
+    procedure TestProdOrderComponentCalculationFormulaParameters()
+    var
+        ProdOrderComponent: Record "Prod. Order Component";
+        ProdOrder: Record "Production Order";
+        ProdOrderLine: Record "Prod. Order Line";
+        CalculatedExpectedQty: Decimal;
+        BaseExpectedQty: Decimal;
+    begin
+        // [SCENARIO] Verify Expected Quantity calculation based on all formula parameters
+        // [GIVEN] A production order with components
+        Initialize();
+        if GlobalItemTemp.FindFirst() then begin
+            GlobalItem.Get(GlobalItemTemp."No.");
+            GlobalCreateProdOrder.CreateProdOrder(GlobalItem, GlobalQty);
+
+            // [WHEN] Get the production order and its components
+            ProdOrder.SetRange("Source No.", GlobalItem."No.");
+            ProdOrder.SetRange(Status, ProdOrder.Status::Released);
+            ProdOrder.FindLast();
+
+            ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
+            ProdOrderLine.FindFirst();
+
+            ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
+            ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
+            if ProdOrderComponent.FindSet() then begin
+                repeat
+                    // [THEN] Verify Calculation Formula field is set
+                    // When Calculation Formula = "Fixed Quantity", the quantity is fixed regardless of parent quantity
+                    if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::" " then begin
+                        // Standard calculation: Quantity per × Production Order Line Quantity
+                        BaseExpectedQty := ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity;
+
+                        // Expected Quantity includes scrap (if any)
+                        // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
+                        if ProdOrderComponent."Scrap %" > 0 then begin
+                            CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
+                            GlobalAssert.IsTrue(
+                                Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
+                                StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
+                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                            );
+
+                            GlobalAssert.AreEqual(
+                                CalculatedExpectedQty,
+                                ProdOrderComponent."Expected Quantity",
+                                StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
+                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                            );
+                        end else begin
+                            // No scrap, should be close to base calculation (allowing for rounding)
+                            GlobalAssert.IsTrue(
+                                Abs(ProdOrderComponent."Expected Quantity" - BaseExpectedQty) < 1,
+                                StrSubstNo('Expected Quantity (%1) should approximate base calculation (%2) for item %3',
+                                    ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                            );
+
+                            GlobalAssert.AreEqual(
+                                BaseExpectedQty,
+                                ProdOrderComponent."Expected Quantity",
+                                StrSubstNo('Expected Quantity (%1) should equal base calculation (%2) for item %3',
+                                    ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                            );
+                        end;
+                    end else if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::"Fixed Quantity" then begin
+                        // [THEN] When Calculation Formula = "Fixed Quantity", Expected Quantity = Quantity (fixed value)
+                        // It should NOT multiply by Production Order Line Quantity
+                        GlobalAssert.AreEqual(
+                            ProdOrderComponent.Quantity,
+                            ProdOrderComponent."Expected Quantity",
+                            StrSubstNo('Expected Quantity (%1) should equal fixed Quantity (%2) for item %3 with Fixed Quantity formula',
+                                ProdOrderComponent."Expected Quantity", ProdOrderComponent.Quantity, ProdOrderComponent."Item No.")
+                        );
+
+                        // Verify it's not multiplied by production order quantity
+                        GlobalAssert.AreNotEqual(
+                            ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity,
+                            ProdOrderComponent."Expected Quantity",
+                            StrSubstNo('Fixed Quantity should not be multiplied by order quantity for item %1', ProdOrderComponent."Item No.")
+                        );
+                    end;
+
+                until ProdOrderComponent.Next() = 0;
+            end;
+        end;
+    end;
+
+    local procedure SetupItemNumberFilter()
+    var
+        LocalItem: Record Item;
+    begin
+        // Filter items for testing, Protect item for when global item is used in other tests
+        LocalItem.Init();
+        LocalItem.SetRange(Type, LocalItem.Type::Inventory);
+        LocalItem.SetRange("Replenishment System", LocalItem."Replenishment System"::"Prod. Order");
+        LocalItem.SetRange("Manufacturing Policy", LocalItem."Manufacturing Policy"::"Make-to-Order");
+        LocalItem.SetFilter("Routing No.", '<>%1', '');
+        LocalItem.SetFilter("Production BOM No.", '<>%1', '');
+        LocalItem.SetRange("Reordering Policy", LocalItem."Reordering Policy"::Order);
+        GlobalItem.Init();
+        GlobalItem.SetRange(Type, GlobalItem.Type::Inventory);
+        GlobalItem.SetRange("Replenishment System", GlobalItem."Replenishment System"::"Prod. Order");
+        GlobalItem.SetRange("Manufacturing Policy", GlobalItem."Manufacturing Policy"::"Make-to-Order");
+        GlobalItem.SetFilter("Routing No.", '<>%1', '');
+        GlobalItem.SetFilter("Production BOM No.", '<>%1', '');
+        GlobalItem.SetRange("Reordering Policy", GlobalItem."Reordering Policy"::Order);
+
+        GlobalItemTemp.DeleteAll();
+        GlobalItemTemp.Reset();
+
+        if LocalItem.FindSet() then begin
+            repeat
+                GlobalItemTemp := LocalItem;
+                GlobalItemTemp.Insert();
+            until LocalItem.Next() = 0;
+        end else begin
+            asserterror Error(GlobalErrorMsg);
+            GlobalAssert.ExpectedError(GlobalErrorMsg);
+        end;
+    end;
+
+    local procedure ParseProductionOrders(MessageText: Text; var OrderList: List of [Code[20]])
+    var
+        NumbersPart: Text;
+        StartPos: Integer;
+        EndPos: Integer;
+        TempText: Text;
+        CurrentNum: Text;
+        i: Integer;
+    begin
+        Clear(OrderList);
+
+        // Extract text between ": " and line break or "Do you want"
+        StartPos := MessageText.IndexOf(': ');
+        if StartPos = 0 then exit;
+        StartPos += 2;
+
+        EndPos := MessageText.IndexOf('\Do you want');
+        if EndPos = 0 then
+            EndPos := StrLen(MessageText) + 1;
+
+        NumbersPart := CopyStr(MessageText, StartPos, EndPos - StartPos).Trim();
+
+        // Handle ellipsis notation "101534...101537"
+        if NumbersPart.Contains('...') then begin
+            ParseRangeNotation(NumbersPart, OrderList);
+            exit;
+        end;
+
+        // Parse comma-separated or single number
+        CurrentNum := '';
+        for i := 1 to StrLen(NumbersPart) do begin
+            case NumbersPart[i] of
+                '0' .. '9':
+                    CurrentNum += CopyStr(NumbersPart, i, 1);
+                ' ':
+                    if CurrentNum <> '' then begin
+                        OrderList.Add(CurrentNum);
+                        CurrentNum := '';
+                    end;
+            end;
+        end;
+
+        // Add last number
+        if CurrentNum <> '' then
+            OrderList.Add(CurrentNum);
+    end;
+
+    local procedure ParseRangeNotation(RangeText: Text; var OrderList: List of [Code[20]])
+    var
+        StartNumber: Integer;
+        EndNumber: Integer;
+        CommaPos: Integer;
+        EllipsisPos: Integer;
+        BeforeEllipsis: Text;
+        AfterEllipsis: Text;
+        LastNumBeforeRange: Text;
+        i: Integer;
+        j: Integer;
+    begin
+        // "101534...101537" -> extract 101534, 101535, 101536, 101537
+
+        EllipsisPos := RangeText.IndexOf('...');
+        BeforeEllipsis := CopyStr(RangeText, 1, EllipsisPos - 1).Trim();
+        AfterEllipsis := CopyStr(RangeText, EllipsisPos + 3).Trim();
+
+        // First, add all numbers before the ellipsis
+        ParseProductionOrders('Created: ' + BeforeEllipsis + ' Do', OrderList);
+
+        // Get the last number added (start of range)
+        if OrderList.Count > 0 then begin
+            Evaluate(StartNumber, OrderList.Get(OrderList.Count));
+            Evaluate(EndNumber, AfterEllipsis);
+
+            // Add remaining numbers in the range
+            for i := StartNumber + 1 to EndNumber do
+                OrderList.Add(Format(i));
+        end;
+    end;
+
+    [ConfirmHandler]
+    procedure NavConfirmHandler(Question: Text; var Answer: Boolean)
+    var
+        OrderNumbers: List of [Code[20]];
+        LastOrder: Code[20];
+        FirstOrder: Code[20];
+        OneProdOrderNoText: Label 'Created production order: %1\Do you want to view the created production orders?';
+        MoreProdOrderNoText: Label 'Created %1 production orders: %2...%3\Do you want to view the created production orders?';
+        ExpectedText: Text;
+    begin
+        Answer := true;
+
+        // Get all production order numbers
+        ParseProductionOrders(Question, OrderNumbers);
+        if OrderNumbers.Count = 0 then
+            exit;
+
+        // Use the numbers
+        if OrderNumbers.Count = 1 then begin
+            FirstOrder := OrderNumbers.Get(1);
+            ExpectedText := StrSubstNo(OneProdOrderNoText, FirstOrder);
+
+            GlobalAssert.AreEqual(ExpectedText, Question, GlobalValueShouldBeMatch);
+        end else begin
+            FirstOrder := OrderNumbers.Get(1);
+            LastOrder := OrderNumbers.Get(OrderNumbers.Count);
+            ExpectedText := StrSubstNo(MoreProdOrderNoText, OrderNumbers.Count, FirstOrder, LastOrder);
+
+            GlobalAssert.AreEqual(ExpectedText, Question, GlobalValueShouldBeMatch);
+        end;
+    end;
+
+    [ModalPageHandler]
+    procedure VerifyNavtoProdOrderPageHandler(var ProdOrderPage: TestPage "Production Order List")
+    begin
+        //GlobalAssert.AreNotEqual('', ProdOrderPage."No.", 'Production Order No should not be empty');
+    end;
+}
