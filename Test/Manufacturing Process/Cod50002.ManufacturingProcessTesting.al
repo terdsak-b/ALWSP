@@ -12,6 +12,7 @@ codeunit 50002 "Manufacturing Process Testing"
         GlobalItem: Record Item;
         GlobalItemTemp: Record Item temporary;
         GlobalAssert: Codeunit Assert;
+        GlobalLibraryRandom: Codeunit "Library - Random";
         GlobalCreateProdOrder: Codeunit CreateProdOrder;
         ProdOrder: Record "Production Order";
         ProdOrderLine: Record "Prod. Order Line";
@@ -21,85 +22,16 @@ codeunit 50002 "Manufacturing Process Testing"
         GlobalNegativeQty: Integer;
 
     local procedure Initialize()
-    var
-        LibraryRandom: Codeunit "Library - Random";
     begin
-        GlobalQty := LibraryRandom.RandDecInDecimalRange(1, 10, 0);
+        GlobalQty := GlobalLibraryRandom.RandDecInDecimalRange(1, 10, 0);
         GlobalNegativeQty := -1;
 
         SetupItemNumberFilter();
     end;
-    // [FEATURE] Production Order Creation with Manufacturing Process Setup
-    [Test]
-    procedure TestItemCreationWithManufacturingItemSingleProdOrder()
-    var
-        ProdOrder: Record "Production Order";
-        ProdOrderLine: Record "Prod. Order Line";
-        ProdOrderRoutingLine: Record "Prod. Order Routing Line";
-        RoutingLine: Record "Routing Line";
-        ProdOrderComponent: Record "Prod. Order Component";
-        ProductionBOMLine: Record "Production BOM Line";
-    begin
-        // [GIVEN] A manufacturing item with setup
-        Initialize();
-        // Get first test item from the temporary table
-        if GlobalItemTemp.FindFirst() then begin
-            GlobalItem.Get(GlobalItemTemp."No.");
-            GlobalItem.FindFirst();
-            // GlobalItem."Production Quantity" := GlobalQty;
-            // GlobalItem.Modify();
-
-            // [WHEN] Create a single production order
-            GlobalCreateProdOrder.CreateProdOrder(GlobalItem, GlobalQty);
-
-            // [THEN] Production order should be created with correct setup
-            ProdOrder.SetRange("Source No.", GlobalItem."No.");
-            ProdOrder.SetRange("Source Type", ProdOrder."Source Type"::Item);
-            ProdOrder.SetRange(Status, ProdOrder.Status::Released);
-            ProdOrder.FindLast();
-            ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
-            ProdOrderLine.FindLast();
-            ProdOrderRoutingLine.SetRange("Routing No.", ProdOrder."Routing No.");
-            ProdOrderRoutingLine.SetRange("Prod. Order No.", ProdOrder."No.");
-            RoutingLine.SetRange("Routing No.", ProdOrderLine."Routing No.");
-            ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
-            ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
-            ProductionBOMLine.SetRange("Production BOM No.", GlobalItem."Production BOM No.");
-
-            // Verify production order details
-            GlobalAssert.AreEqual(GlobalItem."No.", ProdOrder."Source No.", GlobalValueShouldBeMatch);
-            GlobalAssert.AreEqual(GlobalQty, ProdOrder.Quantity, GlobalValueShouldBeMatch);
-            GlobalAssert.AreEqual(ProdOrder.Status::Released, ProdOrder.Status, GlobalValueShouldBeMatch);
-
-            // Verify Routing No. and BOM No. are correctly assigned
-            GlobalAssert.AreEqual(GlobalItem."Routing No.", ProdOrder."Routing No.", GlobalValueShouldBeMatch);
-            if ProdOrderRoutingLine.FindSet() and RoutingLine.FindSet() then begin
-                repeat
-                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Operation No.", RoutingLine."Operation No.", GlobalValueShouldBeMatch);
-                    GlobalAssert.AreEqual(ProdOrderRoutingLine.Type, RoutingLine.Type, GlobalValueShouldBeMatch);
-                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Setup Time", RoutingLine."Setup Time", GlobalValueShouldBeMatch);
-                    GlobalAssert.AreEqual(ProdOrderRoutingLine."Run Time", RoutingLine."Run Time", GlobalValueShouldBeMatch);
-                until (ProdOrderRoutingLine.Next() = 0) and (RoutingLine.Next() = 0);
-            end;
-
-            GlobalAssert.AreEqual(GlobalItem."Production BOM No.", ProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
-            if ProdOrderComponent.FindSet() and ProductionBOMLine.FindSet() then
-                repeat
-                    GlobalAssert.AreEqual(ProdOrderComponent."Item No.", ProductionBOMLine."No.", GlobalValueShouldBeMatch);
-                    GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
-
-                until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
-
-
-        end else begin
-            asserterror Error(GlobalErrorMsg);
-            GlobalAssert.ExpectedError(GlobalErrorMsg);
-        end;
-    end;
 
     [Test]
-    [HandlerFunctions('NavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
-    procedure TestManufacturingItemUIWorkflowSingleProdOrder()
+    [HandlerFunctions('CreateAndNavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
+    procedure CreateProductionOrderSelectionTest()
     var
         ManufacturingPage: TestPage "Manufacturing Item";
         ProdOrder: Record "Production Order";
@@ -108,11 +40,14 @@ codeunit 50002 "Manufacturing Process Testing"
         RoutingLine: Record "Routing Line";
         ProdOrderComponent: Record "Prod. Order Component";
         ProductionBOMLine: Record "Production BOM Line";
+        CalculatedExpectedQty: Decimal;
+        BaseExpectedQty: Decimal;
     begin
-        // [GIVEN] Initialize setup and create test item
+        // [GIVEN] Initialize Quantity and setup test items
         Initialize();
 
         if GlobalItemTemp.FindFirst() then begin
+            NegativeQtyInsert();
             GlobalItem.Get(GlobalItemTemp."No.");
             GlobalItem.FindFirst();
             // [WHEN] Open Manufacturing Item page and create new item and Create Production Order from Item
@@ -166,83 +101,89 @@ codeunit 50002 "Manufacturing Process Testing"
                     GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
 
                 until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
-        end;
-    end;
 
-    [Test]
-    procedure TestItemCreationWithManufacturingItemMultipleProdOrder()
-    var
-        ProdOrder: Record "Production Order";
-        ProdOrderLine: Record "Prod. Order Line";
-        ProdOrderRoutingLine: Record "Prod. Order Routing Line";
-        RoutingLine: Record "Routing Line";
-        ProdOrderComponent: Record "Prod. Order Component";
-        ProductionBOMLine: Record "Production BOM Line";
-    begin
-        // [GIVEN] Initialize test items and production quantity of items to create
-        Initialize();
+            // [THEN] Verify Calculation Formula field is set
+            // When Calculation Formula = "Fixed Quantity", the quantity is fixed regardless of parent quantity
+            if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::" " then begin
+                // Standard calculation: Quantity per × Production Order Line Quantity
+                BaseExpectedQty := ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity;
 
-        // Get all items from temporary table
-        if GlobalItemTemp.FindSet() then begin
-            repeat
-                GlobalItem.SetRange("No.", GlobalItemTemp."No.");
-                if GlobalItem.FindSet() then begin
-                    // [WHEN] Setup and create production orders for test items
-                    // Update each item
-                    //GlobalItem."Production Quantity" := GlobalQty;
-                    //GlobalItem.Modify();
-                    GlobalCreateProdOrder.CreateProdOrder(GlobalItem, GlobalQty);
+                // Expected Quantity includes scrap (if any)
+                // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
+                if ProdOrderComponent."Scrap %" > 0 then begin
+                    CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
+                    GlobalAssert.IsTrue(
+                        Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
+                        StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
+                            ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                    );
 
-                    // [THEN] Production orders are created successfully
-                    ProdOrder.SetRange("Source No.", GlobalItem."No.");
-                    ProdOrder.SetRange("Source Type", ProdOrder."Source Type"::Item);
-                    ProdOrder.SetRange(Status, ProdOrder.Status::Released);
-                    ProdOrder.FindLast();
-                    ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
-                    ProdOrderLine.FindLast();
-                    ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
-                    ProdOrderLine.FindLast();
-                    ProdOrderRoutingLine.SetRange("Routing No.", ProdOrder."Routing No.");
-                    ProdOrderRoutingLine.SetRange("Prod. Order No.", ProdOrder."No.");
-                    RoutingLine.SetRange("Routing No.", ProdOrderLine."Routing No.");
-                    ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
-                    ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
-                    ProductionBOMLine.SetRange("Production BOM No.", GlobalItem."Production BOM No.");
+                    GlobalAssert.AreEqual(
+                        CalculatedExpectedQty,
+                        ProdOrderComponent."Expected Quantity",
+                        StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
+                            ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                    );
+                end else begin
+                    // No scrap, should be close to base calculation (allowing for rounding)
+                    GlobalAssert.IsTrue(
+                        Abs(ProdOrderComponent."Expected Quantity" - BaseExpectedQty) < 1,
+                        StrSubstNo('Expected Quantity (%1) should approximate base calculation (%2) for item %3',
+                            ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                    );
 
-                    GlobalAssert.AreEqual(GlobalItem."No.", ProdOrder."Source No.", GlobalValueShouldBeMatch);
-                    GlobalAssert.AreEqual(GlobalQty, ProdOrder.Quantity, GlobalValueShouldBeMatch);
-                    GlobalAssert.AreEqual(ProdOrder."No.", ProdOrderLine."Prod. Order No.", GlobalValueShouldBeMatch);
-                    GlobalAssert.AreEqual(ProdOrder.Quantity, ProdOrderLine.Quantity, GlobalValueShouldBeMatch);
-
-                    // Verify Routing No. and BOM No. are correctly assigned
-                    GlobalAssert.AreEqual(GlobalItem."Routing No.", ProdOrder."Routing No.", GlobalValueShouldBeMatch);
-                    if ProdOrderRoutingLine.FindSet() and RoutingLine.FindSet() then begin
-                        repeat
-                            GlobalAssert.AreEqual(ProdOrderRoutingLine."Operation No.", RoutingLine."Operation No.", GlobalValueShouldBeMatch);
-                            GlobalAssert.AreEqual(ProdOrderRoutingLine.Type, RoutingLine.Type, GlobalValueShouldBeMatch);
-                            GlobalAssert.AreEqual(ProdOrderRoutingLine."Setup Time", RoutingLine."Setup Time", GlobalValueShouldBeMatch);
-                            GlobalAssert.AreEqual(ProdOrderRoutingLine."Run Time", RoutingLine."Run Time", GlobalValueShouldBeMatch);
-                        until (ProdOrderRoutingLine.Next() = 0) and (RoutingLine.Next() = 0);
-                    end;
-
-                    GlobalAssert.AreEqual(GlobalItem."Production BOM No.", ProdOrderLine."Production BOM No.", GlobalValueShouldBeMatch);
-                    if ProdOrderComponent.FindSet() and ProductionBOMLine.FindSet() then
-                        repeat
-                            GlobalAssert.AreEqual(ProdOrderComponent."Item No.", ProductionBOMLine."No.", GlobalValueShouldBeMatch);
-                            GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
-
-                        until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
+                    GlobalAssert.AreEqual(
+                        BaseExpectedQty,
+                        ProdOrderComponent."Expected Quantity",
+                        StrSubstNo('Expected Quantity (%1) should equal base calculation (%2) for item %3',
+                            ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                    );
                 end;
-            until GlobalItemTemp.Next() = 0;
-        end else begin
-            asserterror Error(GlobalErrorMsg);
-            GlobalAssert.ExpectedError(GlobalErrorMsg);
+            end else if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::"Fixed Quantity" then begin
+                // Fixed Quantity formula: Expected Quantity = Quantity (fixed value)
+                BaseExpectedQty := ProdOrderComponent."Quantity";
+
+                // Expected Quantity includes scrap (if any)
+                // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
+                if ProdOrderComponent."Scrap %" > 0 then begin
+                    CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
+                    GlobalAssert.IsTrue(
+                        Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
+                        StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
+                            ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                    );
+
+                    GlobalAssert.AreEqual(
+                        CalculatedExpectedQty,
+                        ProdOrderComponent."Expected Quantity",
+                        StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
+                            ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                    );
+                end else begin
+
+                    // [THEN] When Calculation Formula = "Fixed Quantity", Expected Quantity = Quantity (fixed value)
+                    // It should NOT multiply by Production Order Line Quantity
+                    GlobalAssert.AreEqual(
+                        BaseExpectedQty,
+                        ProdOrderComponent."Expected Quantity",
+                        StrSubstNo('Expected Quantity (%1) should equal fixed Quantity (%2) for item %3 with Fixed Quantity formula',
+                            ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                    );
+
+                    // Verify it's not multiplied by production order quantity
+                    GlobalAssert.AreNotEqual(
+                        ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity,
+                        ProdOrderComponent."Expected Quantity",
+                        StrSubstNo('Fixed Quantity should not be multiplied by order quantity for item %1', ProdOrderComponent."Item No.")
+                    );
+                end;
+            end;
         end;
     end;
 
     [Test]
-    [HandlerFunctions('NavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
-    procedure TestManufacturingItemUIWorkflowMultipleProdOrder()
+    [HandlerFunctions('CreateAndNavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
+    procedure CreateProductionOrderAllTest()
     var
         ManufacturingPage: TestPage "Manufacturing Item";
         ProdOrder: Record "Production Order";
@@ -251,14 +192,17 @@ codeunit 50002 "Manufacturing Process Testing"
         RoutingLine: Record "Routing Line";
         ProdOrderComponent: Record "Prod. Order Component";
         ProductionBOMLine: Record "Production BOM Line";
+        CalculatedExpectedQty: Decimal;
+        BaseExpectedQty: Decimal;
     begin
-        // [GIVEN] Initialize setup and create test items
+        // [GIVEN] Initialize a Quantity and setup test items
         Initialize();
 
         // [WHEN] Create Production Order from Item
         ManufacturingPage.OpenEdit();
         if GlobalItemTemp.FindSet() then begin
             repeat
+                NegativeQtyInsert();
                 GlobalItem.SetRange("No.", GlobalItemTemp."No.");
                 if GlobalItem.FindSet() then begin
                     ManufacturingPage.GoToRecord(GlobalItem);
@@ -270,6 +214,7 @@ codeunit 50002 "Manufacturing Process Testing"
         // Page close by currpage.close in the action
 
         if GlobalItemTemp.Findset() then begin
+
             repeat
                 GlobalItem.SetRange("No.", GlobalItemTemp."No.");
                 GlobalItem.Get(GlobalItem."No.");
@@ -315,140 +260,84 @@ codeunit 50002 "Manufacturing Process Testing"
                         GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
 
                     until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
-            until GlobalItemTemp.Next() = 0;
-        end;
-    end;
 
-    [Test]
-    procedure TestProductionQuantityValidation() // Use test page instead table field verify
-    var
-        ManufacturingItemPage: TestPage "Manufacturing Item";
-    begin
-        // [GIVEN] Initialize test items and negative production quantity
-        Initialize();
-        ManufacturingItemPage.OpenEdit();
-        if GlobalItemTemp.FindFirst() then begin
-            GlobalItem.SetRange("No.", GlobalItemTemp."No.");
-            GlobalItem.FindFirst();
-            ManufacturingItemPage.GoToRecord(GlobalItem);
+                // [THEN] Verify Calculation Formula field is set
+                // When Calculation Formula = "Fixed Quantity", the quantity is fixed regardless of parent quantity
+                if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::" " then begin
+                    // Standard calculation: Quantity per × Production Order Line Quantity
+                    BaseExpectedQty := ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity;
 
-            // [WHEN] Set negative production quantity
-            asserterror ManufacturingItemPage."Production Quantity".SetValue(GlobalNegativeQty);
+                    // Expected Quantity includes scrap (if any)
+                    // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
+                    if ProdOrderComponent."Scrap %" > 0 then begin
+                        CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
+                        GlobalAssert.IsTrue(
+                            Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
+                            StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
+                                ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                        );
 
-            // [THEN] Validation error is raised for negative production quantity
-            GlobalAssert.ExpectedError('Production Quantity cannot be less than 0.');
-        end else begin
-            asserterror Error(GlobalErrorMsg);
-            GlobalAssert.ExpectedError(GlobalErrorMsg);
-        end;
-    end;
+                        GlobalAssert.AreEqual(
+                            CalculatedExpectedQty,
+                            ProdOrderComponent."Expected Quantity",
+                            StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
+                                ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                        );
+                    end else begin
+                        // No scrap, should be close to base calculation (allowing for rounding)
+                        GlobalAssert.IsTrue(
+                            Abs(ProdOrderComponent."Expected Quantity" - BaseExpectedQty) < 1,
+                            StrSubstNo('Expected Quantity (%1) should approximate base calculation (%2) for item %3',
+                                ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                        );
 
-    [Test]
-    procedure TestProdOrderComponentCalculationFormulaParameters()
-    var
-        ProdOrderComponent: Record "Prod. Order Component";
-        ProdOrder: Record "Production Order";
-        ProdOrderLine: Record "Prod. Order Line";
-        CalculatedExpectedQty: Decimal;
-        BaseExpectedQty: Decimal;
-    begin
-        // [SCENARIO] Verify Expected Quantity calculation based on all formula parameters
-        // [GIVEN] A production order with components
-        Initialize();
-        if GlobalItemTemp.FindFirst() then begin
-            GlobalItem.Get(GlobalItemTemp."No.");
-            GlobalCreateProdOrder.CreateProdOrder(GlobalItem, GlobalQty);
-
-            // [WHEN] Get the production order and its components
-            ProdOrder.SetRange("Source No.", GlobalItem."No.");
-            ProdOrder.SetRange(Status, ProdOrder.Status::Released);
-            ProdOrder.FindLast();
-
-            ProdOrderLine.SetRange("Prod. Order No.", ProdOrder."No.");
-            ProdOrderLine.FindFirst();
-
-            ProdOrderComponent.SetRange("Prod. Order No.", ProdOrder."No.");
-            ProdOrderComponent.SetRange(Status, ProdOrderComponent.Status::Released);
-            if ProdOrderComponent.FindSet() then begin
-                repeat
-                    // [THEN] Verify Calculation Formula field is set
-                    // When Calculation Formula = "Fixed Quantity", the quantity is fixed regardless of parent quantity
-                    if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::" " then begin
-                        // Standard calculation: Quantity per × Production Order Line Quantity
-                        BaseExpectedQty := ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity;
-
-                        // Expected Quantity includes scrap (if any)
-                        // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
-                        if ProdOrderComponent."Scrap %" > 0 then begin
-                            CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
-                            GlobalAssert.IsTrue(
-                                Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
-                                StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
-                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
-                            );
-
-                            GlobalAssert.AreEqual(
-                                CalculatedExpectedQty,
-                                ProdOrderComponent."Expected Quantity",
-                                StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
-                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
-                            );
-                        end else begin
-                            // No scrap, should be close to base calculation (allowing for rounding)
-                            GlobalAssert.IsTrue(
-                                Abs(ProdOrderComponent."Expected Quantity" - BaseExpectedQty) < 1,
-                                StrSubstNo('Expected Quantity (%1) should approximate base calculation (%2) for item %3',
-                                    ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
-                            );
-
-                            GlobalAssert.AreEqual(
-                                BaseExpectedQty,
-                                ProdOrderComponent."Expected Quantity",
-                                StrSubstNo('Expected Quantity (%1) should equal base calculation (%2) for item %3',
-                                    ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
-                            );
-                        end;
-                    end else if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::"Fixed Quantity" then begin
-
-                        BaseExpectedQty := ProdOrderComponent."Quantity";
-                        // Expected Quantity includes scrap (if any)
-                        // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
-                        if ProdOrderComponent."Scrap %" > 0 then begin
-                            CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
-                            GlobalAssert.IsTrue(
-                                Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
-                                StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
-                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
-                            );
-
-                            GlobalAssert.AreEqual(
-                                CalculatedExpectedQty,
-                                ProdOrderComponent."Expected Quantity",
-                                StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
-                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
-                            );
-                        end else begin
-
-                            // [THEN] When Calculation Formula = "Fixed Quantity", Expected Quantity = Quantity (fixed value)
-                            // It should NOT multiply by Production Order Line Quantity
-                            GlobalAssert.AreEqual(
-                                BaseExpectedQty,
-                                ProdOrderComponent."Expected Quantity",
-                                StrSubstNo('Expected Quantity (%1) should equal fixed Quantity (%2) for item %3 with Fixed Quantity formula',
-                                    ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
-                            );
-
-                            // Verify it's not multiplied by production order quantity
-                            GlobalAssert.AreNotEqual(
-                                ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity,
-                                ProdOrderComponent."Expected Quantity",
-                                StrSubstNo('Fixed Quantity should not be multiplied by order quantity for item %1', ProdOrderComponent."Item No.")
-                            );
-                        end;
+                        GlobalAssert.AreEqual(
+                            BaseExpectedQty,
+                            ProdOrderComponent."Expected Quantity",
+                            StrSubstNo('Expected Quantity (%1) should equal base calculation (%2) for item %3',
+                                ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                        );
                     end;
+                end else if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::"Fixed Quantity" then begin
+                    // Fixed Quantity formula: Expected Quantity = Quantity (fixed value)
+                    BaseExpectedQty := ProdOrderComponent."Quantity";
 
-                until ProdOrderComponent.Next() = 0;
-            end;
+                    // Expected Quantity includes scrap (if any)
+                    // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
+                    if ProdOrderComponent."Scrap %" > 0 then begin
+                        CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
+                        GlobalAssert.IsTrue(
+                            Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
+                            StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
+                                ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                        );
+
+                        GlobalAssert.AreEqual(
+                            CalculatedExpectedQty,
+                            ProdOrderComponent."Expected Quantity",
+                            StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
+                                ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                        );
+                    end else begin
+
+                        // [THEN] When Calculation Formula = "Fixed Quantity", Expected Quantity = Quantity (fixed value)
+                        // It should NOT multiply by Production Order Line Quantity
+                        GlobalAssert.AreEqual(
+                            BaseExpectedQty,
+                            ProdOrderComponent."Expected Quantity",
+                            StrSubstNo('Expected Quantity (%1) should equal fixed Quantity (%2) for item %3 with Fixed Quantity formula',
+                                ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                        );
+
+                        // Verify it's not multiplied by production order quantity
+                        GlobalAssert.AreNotEqual(
+                            ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity,
+                            ProdOrderComponent."Expected Quantity",
+                            StrSubstNo('Fixed Quantity should not be multiplied by order quantity for item %1', ProdOrderComponent."Item No.")
+                        );
+                    end;
+                end;
+            until GlobalItemTemp.Next() = 0;
         end;
     end;
 
@@ -503,8 +392,6 @@ codeunit 50002 "Manufacturing Process Testing"
         StartPos += 2;
 
         EndPos := MessageText.IndexOf('\Do you want');
-        if EndPos = 0 then
-            EndPos := StrLen(MessageText) + 1;
 
         NumbersPart := CopyStr(MessageText, StartPos, EndPos - StartPos).Trim();
 
@@ -515,22 +402,13 @@ codeunit 50002 "Manufacturing Process Testing"
         end;
 
         // Parse comma-separated or single number
-        CurrentNum := '';
-        for i := 1 to StrLen(NumbersPart) do begin
-            case NumbersPart[i] of
-                '0' .. '9':
-                    CurrentNum += CopyStr(NumbersPart, i, 1);
-                ' ':
-                    if CurrentNum <> '' then begin
-                        OrderList.Add(CurrentNum);
-                        CurrentNum := '';
-                    end;
-            end;
-        end;
+        CurrentNum := NumbersPart;
 
         // Add last number
-        if CurrentNum <> '' then
+        if CurrentNum <> '' then begin
             OrderList.Add(CurrentNum);
+            CurrentNum := '';
+        end;
     end;
 
     local procedure ParseRangeNotation(RangeText: Text; var OrderList: List of [Code[20]])
@@ -543,7 +421,6 @@ codeunit 50002 "Manufacturing Process Testing"
         AfterEllipsis: Text;
         LastNumBeforeRange: Text;
         i: Integer;
-        j: Integer;
     begin
         // "101534...101537" -> extract 101534, 101535, 101536, 101537
 
@@ -552,7 +429,7 @@ codeunit 50002 "Manufacturing Process Testing"
         AfterEllipsis := CopyStr(RangeText, EllipsisPos + 3).Trim();
 
         // First, add all numbers before the ellipsis
-        ParseProductionOrders('Created: ' + BeforeEllipsis + ' Do', OrderList);
+        ParseProductionOrders('Created: ' + BeforeEllipsis + '\Do you want', OrderList);
 
         // Get the last number added (start of range)
         if OrderList.Count > 0 then begin
@@ -565,8 +442,26 @@ codeunit 50002 "Manufacturing Process Testing"
         end;
     end;
 
+    local procedure NegativeQtyInsert()
+    var
+        ManufacturingItemPage: TestPage "Manufacturing Item";
+    begin
+        GlobalItem.SetRange("No.", GlobalItemTemp."No.");
+        GlobalItem.FindFirst();
+        ManufacturingItemPage.OpenEdit();
+        ManufacturingItemPage.GoToRecord(GlobalItem);
+
+        // [WHEN] Set negative production quantity
+        asserterror ManufacturingItemPage."Production Quantity".SetValue(GlobalNegativeQty);
+        ManufacturingItemPage.Close();
+
+        // [THEN] Validation error is raised for negative production quantity
+        GlobalAssert.ExpectedError('Production Quantity cannot be less than 0.');
+
+    end;
+
     [ConfirmHandler]
-    procedure NavConfirmHandler(Question: Text; var Answer: Boolean)
+    procedure CreateAndNavConfirmHandler(Question: Text; var Answer: Boolean)
     var
         OrderNumbers: List of [Code[20]];
         LastOrder: Code[20];
@@ -579,8 +474,7 @@ codeunit 50002 "Manufacturing Process Testing"
 
         // Get all production order numbers
         ParseProductionOrders(Question, OrderNumbers);
-        if OrderNumbers.Count = 0 then
-            exit;
+        if OrderNumbers.Count = 0 then exit;
 
         // Use the numbers
         if OrderNumbers.Count = 1 then begin
