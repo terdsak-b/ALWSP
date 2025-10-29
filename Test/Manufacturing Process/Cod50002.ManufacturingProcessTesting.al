@@ -409,21 +409,42 @@ codeunit 50002 "Manufacturing Process Testing"
                             );
                         end;
                     end else if ProdOrderComponent."Calculation Formula" = ProdOrderComponent."Calculation Formula"::"Fixed Quantity" then begin
-                        // [THEN] When Calculation Formula = "Fixed Quantity", Expected Quantity = Quantity (fixed value)
-                        // It should NOT multiply by Production Order Line Quantity
-                        GlobalAssert.AreEqual(
-                            ProdOrderComponent.Quantity,
-                            ProdOrderComponent."Expected Quantity",
-                            StrSubstNo('Expected Quantity (%1) should equal fixed Quantity (%2) for item %3 with Fixed Quantity formula',
-                                ProdOrderComponent."Expected Quantity", ProdOrderComponent.Quantity, ProdOrderComponent."Item No.")
-                        );
 
-                        // Verify it's not multiplied by production order quantity
-                        GlobalAssert.AreNotEqual(
-                            ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity,
-                            ProdOrderComponent."Expected Quantity",
-                            StrSubstNo('Fixed Quantity should not be multiplied by order quantity for item %1', ProdOrderComponent."Item No.")
-                        );
+                        BaseExpectedQty := ProdOrderComponent."Quantity";
+                        // Expected Quantity includes scrap (if any)
+                        // Formula: Quantity per × Prod Order Qty × (1 + Scrap %/100)
+                        if ProdOrderComponent."Scrap %" > 0 then begin
+                            CalculatedExpectedQty := BaseExpectedQty * (1 + ProdOrderComponent."Scrap %" / 100);
+                            GlobalAssert.IsTrue(
+                                Abs(ProdOrderComponent."Expected Quantity" - CalculatedExpectedQty) < 0.01,
+                                StrSubstNo('Expected Quantity (%1) should include scrap calculation (%2) for item %3',
+                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                            );
+
+                            GlobalAssert.AreEqual(
+                                CalculatedExpectedQty,
+                                ProdOrderComponent."Expected Quantity",
+                                StrSubstNo('Expected Quantity (%1) should equal scrap calculation (%2) for item %3',
+                                    ProdOrderComponent."Expected Quantity", CalculatedExpectedQty, ProdOrderComponent."Item No.")
+                            );
+                        end else begin
+
+                            // [THEN] When Calculation Formula = "Fixed Quantity", Expected Quantity = Quantity (fixed value)
+                            // It should NOT multiply by Production Order Line Quantity
+                            GlobalAssert.AreEqual(
+                                BaseExpectedQty,
+                                ProdOrderComponent."Expected Quantity",
+                                StrSubstNo('Expected Quantity (%1) should equal fixed Quantity (%2) for item %3 with Fixed Quantity formula',
+                                    ProdOrderComponent."Expected Quantity", BaseExpectedQty, ProdOrderComponent."Item No.")
+                            );
+
+                            // Verify it's not multiplied by production order quantity
+                            GlobalAssert.AreNotEqual(
+                                ProdOrderComponent."Quantity per" * ProdOrderLine.Quantity,
+                                ProdOrderComponent."Expected Quantity",
+                                StrSubstNo('Fixed Quantity should not be multiplied by order quantity for item %1', ProdOrderComponent."Item No.")
+                            );
+                        end;
                     end;
 
                 until ProdOrderComponent.Next() = 0;
