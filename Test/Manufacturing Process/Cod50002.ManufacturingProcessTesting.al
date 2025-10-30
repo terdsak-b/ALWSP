@@ -33,7 +33,7 @@ codeunit 50002 "Manufacturing Process Testing"
     [HandlerFunctions('CreateAndNavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
     procedure CreateProductionOrderSelectionTest()
     var
-        ManufacturingPage: TestPage "Manufacturing Item";
+        ManufacturingPage: TestPage "Manufacturing Items";
         ProdOrder: Record "Production Order";
         ProdOrderLine: Record "Prod. Order Line";
         ProdOrderRoutingLine: Record "Prod. Order Routing Line";
@@ -185,7 +185,7 @@ codeunit 50002 "Manufacturing Process Testing"
     [HandlerFunctions('CreateAndNavConfirmHandler,VerifyNavtoProdOrderPageHandler')]
     procedure CreateProductionOrderAllTest()
     var
-        ManufacturingPage: TestPage "Manufacturing Item";
+        ManufacturingPage: TestPage "Manufacturing Items";
         ProdOrder: Record "Production Order";
         ProdOrderLine: Record "Prod. Order Line";
         ProdOrderRoutingLine: Record "Prod. Order Routing Line";
@@ -444,7 +444,7 @@ codeunit 50002 "Manufacturing Process Testing"
 
     local procedure NegativeQtyInsert()
     var
-        ManufacturingItemPage: TestPage "Manufacturing Item";
+        ManufacturingItemPage: TestPage "Manufacturing Items";
     begin
         GlobalItem.SetRange("No.", GlobalItemTemp."No.");
         GlobalItem.FindFirst();

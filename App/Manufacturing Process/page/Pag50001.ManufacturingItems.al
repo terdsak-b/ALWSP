@@ -4,7 +4,7 @@ using Microsoft.Inventory.Item;
 using Microsoft.Manufacturing.Document;
 using Microsoft.Manufacturing.Setup;
 
-page 50001 "Manufacturing Item"
+page 50001 "Manufacturing Items"
 {
     ApplicationArea = All;
     Caption = 'Manufacturing Item';
@@ -108,20 +108,20 @@ page 50001 "Manufacturing Item"
                     end;
                     if Rec.FindSet() then
                         repeat
-                            GlobalProdOrderNo := GlobalCreateProdOrder.CreateProdOrder(Rec, GlobalQtyDict.Get(Rec."No."));
+                            GlobalNo := GlobalCreateProdOrder.CreateProdOrder(Rec, GlobalQtyDict.Get(Rec."No."));
 
                             // While processing items
-                            BuildMessageProdOrderNo();
+                            BuildMessageNo();
                         until Rec.Next() = 0;
 
-                    GlobalQuestionMsg := GlobalProdOrederNoMessage + GlobalNavQstMsg;
+                    GlobalQuestionMsg := GlobalNoMessage + GlobalNavQstMsg;
                     if Confirm(GlobalQuestionMsg) then begin
                         CurrPage.Close();
                         GlobalProdOrder.FindLast();
                         Page.RunModal(Page::"Production Order List", GlobalProdOrder);
                     end else begin
                         CurrPage.Close();
-                        Page.Run(Page::"Manufacturing Item"); // Refresh the manufacturing item page for set Global variables to default
+                        Page.Run(Page::"Manufacturing Items"); // Refresh the manufacturing item page for set Global variables to default
                     end;
                 end;
             }
@@ -160,12 +160,12 @@ page 50001 "Manufacturing Item"
                     end;
                     if Item.FindSet() then
                         repeat
-                            GlobalProdOrderNo := GlobalCreateProdOrder.CreateProdOrder(Item, GlobalQtyDict.Get(Item."No."));
+                            GlobalNo := GlobalCreateProdOrder.CreateProdOrder(Item, GlobalQtyDict.Get(Item."No."));
                             // While processing items
-                            BuildMessageProdOrderNo();
+                            BuildMessageNo();
                         until Item.Next() = 0;
 
-                    GlobalQuestionMsg := GlobalProdOrederNoMessage + GlobalNavQstMsg;
+                    GlobalQuestionMsg := GlobalNoMessage + GlobalNavQstMsg;
 
                     if Confirm(GlobalQuestionMsg) then begin
                         CurrPage.Close();
@@ -173,7 +173,7 @@ page 50001 "Manufacturing Item"
                         Page.RunModal(Page::"Production Order List", GlobalProdOrder);
                     end else begin
                         CurrPage.Close();
-                        Page.Run(Page::"Manufacturing Item"); // Refresh the manufacturing item page for set Global variables to default
+                        Page.Run(Page::"Manufacturing Items"); // Refresh the manufacturing item page for set Global variables to default
                     end;
                 end;
             }
@@ -184,12 +184,12 @@ page 50001 "Manufacturing Item"
         GlobalProdOrder: Record "Production Order";
         GlobalQty: Decimal;
         GlobalQtyDict: Dictionary of [Code[20], Decimal];
-        GlobalProdOrderNo: Code[20];
+        GlobalNo: Code[20];
         GlobalConfirmMsg: Text;
         GlobalFirstItemNo: Code[20];
         GlobalLastItemNo: Code[20];
         GlobalProcessedCount: Integer;
-        GlobalProdOrederNoMessage: Text;
+        GlobalNoMessage: Text;
         GlobalQuestionMsg: Text;
         GlobalNavQstMsg: Label '\Do you want to view the created production orders?';
 
@@ -214,20 +214,20 @@ page 50001 "Manufacturing Item"
             until Rec.Next() = 0;
     end;
 
-    local procedure BuildMessageProdOrderNo()
+    local procedure BuildMessageNo()
     begin
         // While processing items
         case GlobalProcessedCount of
             0:  // First item
-                GlobalFirstItemNo := GlobalProdOrderNo;
+                GlobalFirstItemNo := GlobalNo;
         end;
-        GlobalLastItemNo := GlobalProdOrderNo;
+        GlobalLastItemNo := GlobalNo;
         GlobalProcessedCount += 1;
         case GlobalProcessedCount of
             1:
-                GlobalProdOrederNoMessage := StrSubstNo('Created production order: %1', GlobalFirstItemNo);
+                GlobalNoMessage := StrSubstNo('Created production order: %1', GlobalFirstItemNo);
             else
-                GlobalProdOrederNoMessage := StrSubstNo('Created %1 production orders: %2...%3',
+                GlobalNoMessage := StrSubstNo('Created %1 production orders: %2...%3',
                     GlobalProcessedCount,
                     GlobalFirstItemNo,
                     GlobalLastItemNo);
