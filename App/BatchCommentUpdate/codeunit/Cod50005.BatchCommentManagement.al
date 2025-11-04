@@ -11,7 +11,14 @@ codeunit 50005 "Batch Comment Management"
         Vendor: Record Vendor;
         ConfirmManagement: Codeunit "Confirm Management";
         ConfirmMsg: Label 'Are you sure you want to apply the batch comment updates?';
+        NotChangesMsg: Label 'No changes to apply.';
+        SuccessMsg: Label 'Batch update completed successfully.';
     begin
+        if BatchCommentUpdateBuffer."Status Indicator" = '' then begin
+            Message(NotChangesMsg);
+            exit;
+        end;
+
         if not ConfirmManagement.GetResponseOrDefault(ConfirmMsg, false) then
             exit;
 
@@ -38,7 +45,7 @@ codeunit 50005 "Batch Comment Management"
                         end;
                 end;
             until BatchCommentUpdateBuffer.Next() = 0;
-        Message('Batch update completed successfully.');
+        Message(SuccessMsg);
     end;
 
     procedure LoadCustomers(var BatchCommentUpdateBuffer: Record "Batch Comment Update Buffer")
