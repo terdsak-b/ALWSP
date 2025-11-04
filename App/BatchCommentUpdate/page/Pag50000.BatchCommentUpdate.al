@@ -6,7 +6,7 @@ page 50000 "Batch Comment Update"
     Caption = 'Batch Comment Update';
     PageType = List;
     SourceTable = "Batch Comment Update Buffer";
-    UsageCategory = Lists;
+    UsageCategory = Administration;
 
     layout
     {
