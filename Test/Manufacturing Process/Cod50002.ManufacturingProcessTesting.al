@@ -380,9 +380,7 @@ codeunit 50002 "Manufacturing Process Testing"
         NumbersPart: Text;
         StartPos: Integer;
         EndPos: Integer;
-        TempText: Text;
         CurrentNum: Text;
-        i: Integer;
     begin
         Clear(OrderList);
 
@@ -401,7 +399,7 @@ codeunit 50002 "Manufacturing Process Testing"
             exit;
         end;
 
-        // Parse comma-separated or single number
+        //  Assign number
         CurrentNum := NumbersPart;
 
         // Add last number
@@ -415,11 +413,9 @@ codeunit 50002 "Manufacturing Process Testing"
     var
         StartNumber: Integer;
         EndNumber: Integer;
-        CommaPos: Integer;
         EllipsisPos: Integer;
         BeforeEllipsis: Text;
         AfterEllipsis: Text;
-        LastNumBeforeRange: Text;
         i: Integer;
     begin
         // "101534...101537" -> extract 101534, 101535, 101536, 101537
@@ -469,6 +465,7 @@ codeunit 50002 "Manufacturing Process Testing"
         OneProdOrderNoText: Label 'Created production order: %1\Do you want to view the created production orders?';
         MoreProdOrderNoText: Label 'Created %1 production orders: %2...%3\Do you want to view the created production orders?';
         ExpectedText: Text;
+        ProductionOrder: Record "Production Order";
     begin
         Answer := true;
 
@@ -478,13 +475,19 @@ codeunit 50002 "Manufacturing Process Testing"
 
         // Use the numbers
         if OrderNumbers.Count = 1 then begin
-            FirstOrder := OrderNumbers.Get(1);
+            ProductionOrder.SetRange("No.", OrderNumbers.Get(1));
+            ProductionOrder.FindLast();
+            FirstOrder := ProductionOrder."No.";
             ExpectedText := StrSubstNo(OneProdOrderNoText, FirstOrder);
 
             GlobalAssert.AreEqual(ExpectedText, Question, GlobalValueShouldBeMatch);
         end else begin
-            FirstOrder := OrderNumbers.Get(1);
-            LastOrder := OrderNumbers.Get(OrderNumbers.Count);
+            ProductionOrder.SetRange("No.", OrderNumbers.Get(1));
+            ProductionOrder.FindLast();
+            FirstOrder := ProductionOrder."No.";
+            ProductionOrder.SetRange("No.", OrderNumbers.Get(OrderNumbers.Count));
+            ProductionOrder.FindLast();
+            LastOrder := ProductionOrder."No.";
             ExpectedText := StrSubstNo(MoreProdOrderNoText, OrderNumbers.Count, FirstOrder, LastOrder);
 
             GlobalAssert.AreEqual(ExpectedText, Question, GlobalValueShouldBeMatch);
