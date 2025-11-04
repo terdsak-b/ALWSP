@@ -15,9 +15,9 @@ codeunit 50004 "Assembly Order Items Testing"
     Subtype = Test;
 
     var
+        GlobalAssemblyHeader: Record "Assembly Header";
         GlobalItem: Record Item temporary;
         GlobalLocation: Record Location;
-        GlobalAssemblyHeader: Record "Assembly Header";
         GlobalAssert: Codeunit "Assert";
         GlobalChildQty: Decimal;
         GlobalNegativeQty: Decimal;
@@ -94,26 +94,28 @@ codeunit 50004 "Assembly Order Items Testing"
         // Handle the Assembly Orders page
     end;
 
-    local procedure CreateAsmOrderItems()
+    local procedure CheckResultAfterCreateSetupDataForPostAssemvblyOrder()
     var
-        AssemblySetup: Record "Assembly Setup";
-        NoSeries: Codeunit "No. Series";
-        ExpectedAsmOrderNo: Text;
-        CreateAsmOrderMsg: Label 'Created assembly order: %1\Do you want to view the created assembly orders?';
-        AssemblyOrderItems: TestPage "Assembly Order Items";
+        BOMComponent: Record "BOM Component";
+        ItemLedgerEntry: Record "Item Ledger Entry";
     begin
-        if GlobalItem.FindFirst() then begin
-            //NegativeQtyInsert(GlobalItem."No."); // Verify negative quantity error handling
-            AssemblyOrderItems.OpenEdit();
-            AssemblyOrderItems.GoToRecord(GlobalItem);
-            AssemblyOrderItems."Assembly Quantity".SetValue(GlobalParentQty);
-
-            AssemblySetup.Get();
-            ExpectedAsmOrderNo := IncStr(NoSeries.PeekNextNo(AssemblySetup."Assembly Order Nos."), 0);
-            GlobalExpectedMsg := StrSubstNo(CreateAsmOrderMsg, ExpectedAsmOrderNo);
-
-            AssemblyOrderItems.CreateAssemblyOrder.Invoke();
-        end;
+        if GlobalItem.FindSet() then
+            repeat
+                BOMComponent.SetRange("Parent Item No.", GlobalItem."No.");
+                if BOMComponent.FindSet() then
+                    repeat
+                        if BOMComponent.Type = BOMComponent.Type::Item then begin
+                            // Verify Item Ledger Entry for Assembly component
+                            ItemLedgerEntry.SetRange("Item No.", BOMComponent."No.");
+                            ItemLedgerEntry.SetRange("Location Code", GlobalLocation.Code);
+                            ItemLedgerEntry.SetRange("Entry Type", ItemLedgerEntry."Entry Type"::"Positive Adjmt.");
+                            if ItemLedgerEntry.FindLast() then begin
+                                GlobalAssert.AreEqual(GlobalChildQty, ItemLedgerEntry."Quantity", GlobalValueShouldBeMatched);
+                                GlobalAssert.AreEqual(GlobalLocation.Code, ItemLedgerEntry."Location Code", GlobalValueShouldBeMatched);
+                            end;
+                        end;
+                    until BOMComponent.Next() = 0;
+            until GlobalItem.Next() = 0;
     end;
 
     local procedure CreateAsmOrderAll_Items() // Unused for check Axxxxx...Axxxxx
@@ -140,6 +142,28 @@ codeunit 50004 "Assembly Order Items Testing"
         AssemblyOrderItems.CreateAll.Invoke();
     end;
 
+    local procedure CreateAsmOrderItems()
+    var
+        AssemblySetup: Record "Assembly Setup";
+        NoSeries: Codeunit "No. Series";
+        ExpectedAsmOrderNo: Text;
+        CreateAsmOrderMsg: Label 'Created assembly order: %1\Do you want to view the created assembly orders?';
+        AssemblyOrderItems: TestPage "Assembly Order Items";
+    begin
+        if GlobalItem.FindFirst() then begin
+            NegativeQtyInsert(GlobalItem."No."); // Verify negative quantity error handling
+            AssemblyOrderItems.OpenEdit();
+            AssemblyOrderItems.GoToRecord(GlobalItem);
+            AssemblyOrderItems."Assembly Quantity".SetValue(GlobalParentQty);
+
+            AssemblySetup.Get();
+            ExpectedAsmOrderNo := IncStr(NoSeries.PeekNextNo(AssemblySetup."Assembly Order Nos."), 0);
+            GlobalExpectedMsg := StrSubstNo(CreateAsmOrderMsg, ExpectedAsmOrderNo);
+
+            AssemblyOrderItems.CreateAssemblyOrder.Invoke();
+        end;
+    end;
+
     local procedure CreateInventoryPostingSetup(LocationCode: Code[10]; InvtPostingGroupCode: Code[20])
     var
         GLAccount: Record "G/L Account";
@@ -160,56 +184,6 @@ codeunit 50004 "Assembly Order Items Testing"
         InventoryPostingSetup.Validate("Subcontracted Variance Account", GLAccount."No.");
         InventoryPostingSetup.Validate("WIP Account", GLAccount."No.");
         InventoryPostingSetup.Modify();
-    end;
-
-    local procedure Initialize()
-    var
-        LibraryRandom: Codeunit "Library - Random";
-        LibraryWarehouse: Codeunit "Library - Warehouse";
-    begin
-        Clear(GlobalExpectedMsg);
-        Clear(GlobalLocation);
-        Clear(GlobalNegativeQty);
-        Clear(GlobalParentQty);
-        Clear(GlobalChildQty);
-
-        GlobalParentQty := LibraryRandom.RandDecInRange(1, 5, 0);
-        GlobalChildQty := LibraryRandom.RandDecInRange(90, 100, 0);
-        GlobalNegativeQty := LibraryRandom.RandDecInRange(-10, -1, 0);
-    end;
-
-    local procedure NegativeQtyInsert(ItemNo: Code[20])
-    var
-        ErrorMsg: Label 'Production Quantity cannot be less than 0.';
-        AssemblyOrderItems: TestPage "Assembly Order Items";
-    begin
-        AssemblyOrderItems.OpenEdit();
-        AssemblyOrderItems.GoToKey(ItemNo);
-
-        Commit();
-
-        asserterror AssemblyOrderItems."Assembly Quantity".SetValue(GlobalNegativeQty);
-        AssemblyOrderItems.Close();
-
-        GlobalAssert.ExpectedError(ErrorMsg);
-    end;
-
-    local procedure PostAssemblyOrder()
-    var
-
-        LibraryAssembly: Codeunit "Library - Assembly";
-    begin
-        CreateAsmOrderItems();
-        if GlobalItem.FindFirst() then begin
-            GlobalAssemblyHeader.SetRange("Document Type", GlobalAssemblyHeader."Document Type"::Order);
-            GlobalAssemblyHeader.SetRange("Item No.", GlobalItem."No.");
-            GlobalAssemblyHeader.FindLast();
-            // Posting Setup Assembly order
-            CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
-
-            // Post Assembly order
-            LibraryAssembly.PostAssemblyHeader(GlobalAssemblyHeader, '');
-        end;
     end;
 
     local procedure CreateSetupDataForPostAssemvblyOrder()
@@ -261,6 +235,57 @@ codeunit 50004 "Assembly Order Items Testing"
         end;
     end;
 
+    local procedure Initialize()
+    var
+        LibraryRandom: Codeunit "Library - Random";
+        LibraryWarehouse: Codeunit "Library - Warehouse";
+    begin
+        Clear(GlobalExpectedMsg);
+        Clear(GlobalLocation);
+        Clear(GlobalNegativeQty);
+        Clear(GlobalParentQty);
+        Clear(GlobalChildQty);
+
+        GlobalParentQty := LibraryRandom.RandDecInRange(1, 5, 0);
+        GlobalChildQty := LibraryRandom.RandDecInRange(90, 100, 0);
+        GlobalNegativeQty := LibraryRandom.RandDecInRange(-10, -1, 0);
+    end;
+
+    local procedure NegativeQtyInsert(ItemNo: Code[20])
+    var
+        ErrorMsg: Label 'Production Quantity cannot be less than 0.';
+        AssemblyOrderItems: TestPage "Assembly Order Items";
+    begin
+        AssemblyOrderItems.OpenEdit();
+        AssemblyOrderItems.GoToKey(ItemNo);
+
+        Commit();
+
+        asserterror AssemblyOrderItems."Assembly Quantity".SetValue(GlobalNegativeQty);
+        AssemblyOrderItems.Close();
+
+        GlobalAssert.ExpectedError(ErrorMsg);
+    end;
+
+    local procedure PostAssemblyOrder()
+    var
+        LibraryAssembly: Codeunit "Library - Assembly";
+
+    begin
+        CreateAsmOrderItems();
+        if GlobalItem.FindFirst() then begin
+            GlobalAssemblyHeader.SetRange("Document Type", GlobalAssemblyHeader."Document Type"::Order);
+            GlobalAssemblyHeader.SetRange("Item No.", GlobalItem."No.");
+            GlobalAssemblyHeader.FindLast();
+            GlobalAssemblyHeader.Validate("Location Code", GlobalLocation.Code);
+            // Posting Setup Assembly order
+            CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
+
+            // Post Assembly order
+            LibraryAssembly.PostAssemblyHeader(GlobalAssemblyHeader, '');
+        end;
+    end;
+
     local procedure VerifyAsmOrder()
     var
         AssemblyLine: Record "Assembly Line";
@@ -307,55 +332,38 @@ codeunit 50004 "Assembly Order Items Testing"
         end;
     end;
 
-    local procedure CheckResultAfterCreateSetupDataForPostAssemvblyOrder()
-    var
-        BOMComponent: Record "BOM Component";
-        ItemLedgerEntry: Record "Item Ledger Entry";
-    begin
-        if GlobalItem.FindSet() then
-            repeat
-                BOMComponent.SetRange("Parent Item No.", GlobalItem."No.");
-                if BOMComponent.FindSet() then
-                    repeat
-                        if BOMComponent.Type = BOMComponent.Type::Item then begin
-                            // Verify Item Ledger Entry for Assembly component
-                            ItemLedgerEntry.SetRange("Item No.", BOMComponent."No.");
-                            ItemLedgerEntry.SetRange("Location Code", GlobalLocation.Code);
-                            ItemLedgerEntry.SetRange("Entry Type", ItemLedgerEntry."Entry Type"::"Positive Adjmt.");
-                            if ItemLedgerEntry.FindLast() then begin
-                                GlobalAssert.AreEqual(GlobalChildQty, ItemLedgerEntry."Quantity", GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(GlobalLocation.Code, ItemLedgerEntry."Location Code", GlobalValueShouldBeMatched);
-                            end;
-                        end;
-                    until BOMComponent.Next() = 0;
-            until GlobalItem.Next() = 0;
-    end;
-
     local procedure VerifyPostedAssemblyOrderViaItemLedgerEntries()
     var
+        ItemLedgerEntry: Record "Item Ledger Entry";
         PostedAssemblyHeader: Record "Posted Assembly Header";
         PostedAssemblyLine: Record "Posted Assembly Line";
-        ItemLedgerEntry: Record "Item Ledger Entry";
     begin
 
         if GlobalItem.FindFirst() then begin
             PostedAssemblyHeader.SetRange("Item No.", GlobalItem."No.");
-            PostedAssemblyHeader.FindFirst();
+            PostedAssemblyHeader.SetRange("Location Code", GlobalLocation.Code);
+            PostedAssemblyHeader.SetRange("Order No.", GlobalAssemblyHeader."No.");
+            PostedAssemblyHeader.FindLast();
             PostedAssemblyLine.SetRange("Document No.", PostedAssemblyHeader."No.");
+            PostedAssemblyLine.SetRange(Type, PostedAssemblyLine.Type::Item);
 
             ItemLedgerEntry.SetRange("Document No.", PostedAssemblyHeader."No.");
+            ItemLedgerEntry.SetRange("Location Code", GlobalLocation.Code);
             ItemLedgerEntry.SetRange("Document Type", ItemLedgerEntry."Document Type"::"Posted Assembly");
 
             if ItemLedgerEntry.FindSet() then
                 repeat
                     if ItemLedgerEntry."Entry Type" = ItemLedgerEntry."Entry Type"::"Assembly Output" then begin
-                        GlobalAssert.AreEqual(GlobalParentQty, ItemLedgerEntry."Quantity", GlobalValueShouldBeMatched);
-                    end else begin
-                        PostedAssemblyLine.SetRange(Type, PostedAssemblyLine.Type::Item);
-                        if PostedAssemblyLine.FindSet() then begin
-                            repeat
-                                GlobalAssert.AreEqual(-PostedAssemblyLine.Quantity, ItemLedgerEntry."Quantity", GlobalValueShouldBeMatched);
-                            until PostedAssemblyLine.Next() = 0;
+                        // Verify Parent Item Ledger Entry
+                        GlobalAssert.AreEqual(PostedAssemblyHeader."No.", ItemLedgerEntry."Document No.", GlobalValueShouldBeMatched);
+                        GlobalAssert.AreEqual(PostedAssemblyHeader.Quantity, ItemLedgerEntry."Quantity", GlobalValueShouldBeMatched);
+                    end;
+
+                    if ItemLedgerEntry."Entry Type" = ItemLedgerEntry."Entry Type"::"Assembly Consumption" then begin
+                        // Verify Component Item Ledger Entry
+                        PostedAssemblyLine.SetRange("No.", ItemLedgerEntry."Item No.");
+                        if PostedAssemblyLine.FindFirst() then begin
+                            GlobalAssert.AreEqual(-PostedAssemblyLine.Quantity, ItemLedgerEntry."Quantity", GlobalValueShouldBeMatched);
                         end;
                     end;
                 until ItemLedgerEntry.Next() = 0;
