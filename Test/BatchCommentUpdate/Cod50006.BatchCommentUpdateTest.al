@@ -17,13 +17,13 @@ codeunit 50006 "Batch Comment Update Test"
     var
         Customer: Record Customer;
     begin
-        // [SCENARIO] Load Customers into Batch Comment Update Buffer
+        // [SCENARIO] Load Customers into Batch Comment Update Buffer and customer should be loaded correctly
         Initialize(false);
 
         // [WHEN] Load Customers
         LoadPersonsIntoBuffer(true);
 
-        // [THEN] Verify that Customers are loaded into the buffer
+        // [THEN] Verify that Customers are loaded into the buffer correctly
         VerifyCustomersLoaded();
     end;
 
@@ -32,13 +32,13 @@ codeunit 50006 "Batch Comment Update Test"
     var
         Vendor: Record Vendor;
     begin
-        // [SCENARIO] Load Vendors into Batch Comment Update Buffer
+        // [SCENARIO] Load Vendors into Batch Comment Update Buffer and vendors should be loaded correctly
         Initialize(false);
 
         // [WHEN] Load Vendors
         LoadPersonsIntoBuffer(false);
 
-        // [THEN] Verify that Vendors are loaded into the buffer
+        // [THEN] Verify that Vendors are loaded into the buffer correctly
         VerifyVendorsLoaded();
     end;
 
@@ -46,14 +46,14 @@ codeunit 50006 "Batch Comment Update Test"
     [HandlerFunctions('ConfirmHandler,MessageHandler')]
     procedure "03_Create_ESDComment"()
     begin
-        // [SCENARIO] Apply changes to customers and create ESD comments
+        // [SCENARIO] Apply changes to create ESD comments to customers and vendors and verify it correctly
         // [GIVEN] Clear ESD comments in customers and vendors and create random ESD comment message
         Initialize(false);
 
         // [WHEN] Apply changes to customers
         CreateESDCommentToPerson(true, GlobalESDCommentMsg);
 
-        // [THEN] Verify that ESD comments are created
+        // [THEN] Verify that ESD comments are created correctly
         VerifyESDCommentsCreated();
     end;
 
@@ -61,7 +61,7 @@ codeunit 50006 "Batch Comment Update Test"
     [HandlerFunctions('ConfirmHandler,MessageHandler')]
     procedure "04_Delete_ESDComment"()
     begin
-        // [SCENARIO] Delete ESD comments from customers and vendors
+        // [SCENARIO] Delete ESD comments from customers and vendors and verify it correctly
         // [GIVEN] Create ESD comments in customers and vendors
         Initialize(true);
 
@@ -112,7 +112,7 @@ codeunit 50006 "Batch Comment Update Test"
                 until Vendor.Next() = 0;
         end;
 
-        GlobalESDCommentMsg := LibraryRandom.RandText(100);
+        GlobalESDCommentMsg := 'Update Comment: ' + LibraryRandom.RandText(84);
 
         if CreateComments then begin
             // Create ESD comments for customers and vendors
