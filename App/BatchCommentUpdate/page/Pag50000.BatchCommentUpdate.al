@@ -119,9 +119,7 @@ page 50000 "Batch Comment Update"
                             Rec.CalcFields();
                             Rec.Modify();
                         until Rec.Next() = 0;
-
-                    GlobalBatchCommentManagement.LoadDefaultRecords(Rec);
-                    CurrPage.Update(false);
+                    CurrPage.Update(true);
                 end;
             }
             action(DeleteComment)
@@ -137,7 +135,6 @@ page 50000 "Batch Comment Update"
 
                     GlobalBatchCommentManagement.DeleteComment(Rec);
 
-                    GlobalBatchCommentManagement.LoadDefaultRecords(Rec);
                     CurrPage.Update(false);
                 end;
             }
@@ -146,7 +143,9 @@ page 50000 "Batch Comment Update"
 
     trigger OnOpenPage()
     begin
-        Clear(Rec);
+        Rec.Init();
+        Rec.Reset();
+        Rec.DeleteAll();
         GlobalBatchCommentManagement.LoadDefaultRecords(Rec);
     end;
 

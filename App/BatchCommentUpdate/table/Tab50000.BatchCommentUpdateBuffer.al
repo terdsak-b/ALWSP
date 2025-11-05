@@ -50,7 +50,7 @@ table 50000 "Batch Comment Update Buffer"
     }
     keys
     {
-        key(PK; "Entry No.", "Entity Type", "Entity No.", "Entity Name", "Old Comment", "New Comment", "Transfer Comment")
+        key(PK; "Entry No.", "Entity Type", "Entity No.")
         {
             Clustered = true;
         }

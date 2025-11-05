@@ -11,18 +11,23 @@ codeunit 50005 "Batch Comment Management"
         Vendor: Record Vendor;
         ConfirmManagement: Codeunit "Confirm Management";
         ConfirmMsg: Label 'Are you sure you want to apply the batch comment updates?';
-        NotChangesMsg: Label 'No changes to apply.';
+        NotChangesMsg: Label 'Comment are the same as before.';
         SuccessMsg: Label 'Batch update completed successfully.';
+        NoModificationsMsg: Label 'No modifications found in the selected records.';
     begin
         if BatchCommentUpdateBuffer."Status Indicator" = '' then begin
-            Message(NotChangesMsg);
+            Message(NoModificationsMsg);
             exit;
+        end;
+
+        if BatchCommentUpdateBuffer."New Comment" = BatchCommentUpdateBuffer."Old Comment" then begin
+            Message(NotChangesMsg);
         end;
 
         if not ConfirmManagement.GetResponseOrDefault(ConfirmMsg, false) then
             exit;
 
-        if BatchCommentUpdateBuffer.FindSet() then
+        if BatchCommentUpdateBuffer.FindSet() or BatchCommentUpdateBuffer.IsTemporary then
             repeat
                 case BatchCommentUpdateBuffer."Entity Type" of
                     BatchCommentUpdateBuffer."Entity Type"::Customer:
@@ -45,6 +50,7 @@ codeunit 50005 "Batch Comment Management"
                         end;
                 end;
             until BatchCommentUpdateBuffer.Next() = 0;
+        LoadDefaultRecords(BatchCommentUpdateBuffer);
         Message(SuccessMsg);
     end;
 
@@ -72,7 +78,6 @@ codeunit 50005 "Batch Comment Management"
                     BatchCommentUpdateBuffer."Entity No." := Customer."No.";
                     BatchCommentUpdateBuffer."Entity Name" := Customer.Name;
                     BatchCommentUpdateBuffer."Old Comment" := Customer."ESD Comment";
-                    BatchCommentUpdateBuffer."New Comment" := Customer."ESD Comment";
                     BatchCommentUpdateBuffer."Transfer Comment" := Customer."Transfer Comment";
                     BatchCommentUpdateBuffer.Insert();
                 end;
@@ -89,7 +94,6 @@ codeunit 50005 "Batch Comment Management"
         BatchCommentUpdateBuffer.DeleteAll();
 
         // Load Customers with ESD comments
-        Customer.Reset();
         if Customer.FindSet() then
             repeat
                 if (Customer."ESD Comment" <> '') or Customer."Transfer Comment" then begin
@@ -105,7 +109,6 @@ codeunit 50005 "Batch Comment Management"
             until Customer.Next() = 0;
 
         // Load Vendors with ESD comments
-        Vendor.Reset();
         if Vendor.FindSet() then
             repeat
                 if (Vendor."ESD Comment" <> '') or Vendor."Transfer Comment" then begin
@@ -145,7 +148,6 @@ codeunit 50005 "Batch Comment Management"
                     BatchCommentUpdateBuffer."Entity No." := Vendor."No.";
                     BatchCommentUpdateBuffer."Entity Name" := Vendor.Name;
                     BatchCommentUpdateBuffer."Old Comment" := Vendor."ESD Comment";
-                    BatchCommentUpdateBuffer."New Comment" := Vendor."ESD Comment";
                     BatchCommentUpdateBuffer."Transfer Comment" := Vendor."Transfer Comment";
                     BatchCommentUpdateBuffer.Insert();
                 end;
@@ -159,7 +161,14 @@ codeunit 50005 "Batch Comment Management"
         Vendor: Record Vendor;
         ConfirmManagement: Codeunit "Confirm Management";
         ConfirmMsg: Label 'Are you sure you want to delete the comments for the selected entities?';
+        NoCommentsMsg: Label 'No comments to delete.';
+        DeletedMsg: Label 'Comments deleted successfully.';
     begin
+        if BatchCommentUpdateBuffer.IsEmpty or (BatchCommentUpdateBuffer."Old Comment" = '') then begin
+            Message(NoCommentsMsg);
+            exit;
+        end;
+
         if not ConfirmManagement.GetResponseOrDefault(ConfirmMsg, false) then
             exit;
 
@@ -186,5 +195,7 @@ codeunit 50005 "Batch Comment Management"
                 end;
                 BatchCommentUpdateBuffer.Delete();
             until BatchCommentUpdateBuffer.Next() = 0;
+        LoadDefaultRecords(BatchCommentUpdateBuffer);
+        Message(DeletedMsg);
     end;
 }
