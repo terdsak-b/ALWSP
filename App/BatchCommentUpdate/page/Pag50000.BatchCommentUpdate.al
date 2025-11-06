@@ -18,7 +18,7 @@ page 50000 "Batch Comment Update"
                 {
                     ApplicationArea = All;
                     Caption = 'Status';
-                    ToolTip = 'Shows ● when record has been edited but not applied';
+                    ToolTip = 'Shows ● Modified when record has been edited but not applied';
                     Style = Attention;
                     StyleExpr = Rec.Modified;
                 }
@@ -111,15 +111,9 @@ page 50000 "Batch Comment Update"
                 begin
                     CurrPage.SetSelectionFilter(Rec);
                     GlobalBatchCommentManagement.ApplyBatchUpdate(Rec);
-
                     // Clear modified marks after applying
-                    if Rec.FindSet() then
-                        repeat
-                            Rec.Modified := false;
-                            Rec.CalcFields();
-                            Rec.Modify();
-                        until Rec.Next() = 0;
-                    CurrPage.Update(true);
+                    GlobalBatchCommentManagement.ClearStatusIndicators(Rec);
+                    CurrPage.Update();
                 end;
             }
             action(DeleteComment)
@@ -132,20 +126,22 @@ page 50000 "Batch Comment Update"
                 trigger OnAction()
                 begin
                     CurrPage.SetSelectionFilter(Rec);
-
                     GlobalBatchCommentManagement.DeleteComment(Rec);
-
-                    CurrPage.Update(false);
+                    CurrPage.Update();
                 end;
             }
         }
     }
 
-    trigger OnOpenPage()
+    trigger OnInit()
     begin
         Rec.Init();
         Rec.Reset();
         Rec.DeleteAll();
+    end;
+
+    trigger OnOpenPage()
+    begin
         GlobalBatchCommentManagement.LoadDefaultRecords(Rec);
     end;
 

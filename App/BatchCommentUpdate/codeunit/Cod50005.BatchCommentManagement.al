@@ -54,6 +54,60 @@ codeunit 50005 "Batch Comment Management"
         Message(SuccessMsg);
     end;
 
+    procedure ClearStatusIndicators(var BatchCommentUpdateBuffer: Record "Batch Comment Update Buffer")
+    begin
+        if BatchCommentUpdateBuffer.FindSet(true) then
+            repeat
+                BatchCommentUpdateBuffer.Modified := false;
+                BatchCommentUpdateBuffer.CalcFields();
+                BatchCommentUpdateBuffer.Modify();
+            until BatchCommentUpdateBuffer.Next() = 0;
+    end;
+
+    procedure DeleteComment(var BatchCommentUpdateBuffer: Record "Batch Comment Update Buffer")
+    var
+        Customer: Record Customer;
+        Vendor: Record Vendor;
+        ConfirmManagement: Codeunit "Confirm Management";
+        ConfirmMsg: Label 'Are you sure you want to delete the comments for the selected entities?';
+        NoCommentsMsg: Label 'No comments to delete.';
+        DeletedMsg: Label 'Comments deleted successfully.';
+    begin
+        if BatchCommentUpdateBuffer.IsEmpty or (BatchCommentUpdateBuffer."Old Comment" = '') then begin
+            Message(NoCommentsMsg);
+            exit;
+        end;
+
+        if not ConfirmManagement.GetResponseOrDefault(ConfirmMsg, false) then
+            exit;
+
+        if BatchCommentUpdateBuffer.FindSet() then
+            repeat
+                case BatchCommentUpdateBuffer."Entity Type" of
+                    BatchCommentUpdateBuffer."Entity Type"::Customer:
+                        begin
+                            if Customer.Get(BatchCommentUpdateBuffer."Entity No.") then begin
+                                Customer."ESD Comment" := '';
+                                Customer."Transfer Comment" := false;
+                                Customer.Modify(true);
+                            end;
+                        end;
+                    BatchCommentUpdateBuffer."Entity Type"::Vendor:
+                        begin
+                            if Vendor.Get(BatchCommentUpdateBuffer."Entity No.") then begin
+
+                                Vendor."ESD Comment" := '';
+                                Vendor."Transfer Comment" := false;
+                                Vendor.Modify(true);
+                            end;
+                        end;
+                end;
+                BatchCommentUpdateBuffer.Delete();
+            until BatchCommentUpdateBuffer.Next() = 0;
+        LoadDefaultRecords(BatchCommentUpdateBuffer);
+        Message(DeletedMsg);
+    end;
+
     procedure LoadCustomers(var BatchCommentUpdateBuffer: Record "Batch Comment Update Buffer")
     var
         Customer: Record Customer;
@@ -153,49 +207,5 @@ codeunit 50005 "Batch Comment Management"
                 end;
                 BatchCommentUpdateBuffer.Reset();
             until Vendor.Next() = 0;
-    end;
-
-    procedure DeleteComment(var BatchCommentUpdateBuffer: Record "Batch Comment Update Buffer")
-    var
-        Customer: Record Customer;
-        Vendor: Record Vendor;
-        ConfirmManagement: Codeunit "Confirm Management";
-        ConfirmMsg: Label 'Are you sure you want to delete the comments for the selected entities?';
-        NoCommentsMsg: Label 'No comments to delete.';
-        DeletedMsg: Label 'Comments deleted successfully.';
-    begin
-        if BatchCommentUpdateBuffer.IsEmpty or (BatchCommentUpdateBuffer."Old Comment" = '') then begin
-            Message(NoCommentsMsg);
-            exit;
-        end;
-
-        if not ConfirmManagement.GetResponseOrDefault(ConfirmMsg, false) then
-            exit;
-
-        if BatchCommentUpdateBuffer.FindSet() then
-            repeat
-                case BatchCommentUpdateBuffer."Entity Type" of
-                    BatchCommentUpdateBuffer."Entity Type"::Customer:
-                        begin
-                            if Customer.Get(BatchCommentUpdateBuffer."Entity No.") then begin
-                                Customer."ESD Comment" := '';
-                                Customer."Transfer Comment" := false;
-                                Customer.Modify(true);
-                            end;
-                        end;
-                    BatchCommentUpdateBuffer."Entity Type"::Vendor:
-                        begin
-                            if Vendor.Get(BatchCommentUpdateBuffer."Entity No.") then begin
-
-                                Vendor."ESD Comment" := '';
-                                Vendor."Transfer Comment" := false;
-                                Vendor.Modify(true);
-                            end;
-                        end;
-                end;
-                BatchCommentUpdateBuffer.Delete();
-            until BatchCommentUpdateBuffer.Next() = 0;
-        LoadDefaultRecords(BatchCommentUpdateBuffer);
-        Message(DeletedMsg);
     end;
 }

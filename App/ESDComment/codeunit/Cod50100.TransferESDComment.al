@@ -6,14 +6,19 @@ codeunit 50100 TransferESDComment
         Customer: Record Customer;
     begin
         GlobalSalesandReceivableSetup.Get();
-        if not Confirm(GlobalConfirmQst) then begin
-            GlobalSalesandReceivableSetup."Confirmation for ESD Comment" := false;
+        if GlobalSalesandReceivableSetup."Confirmation for ESD Comment" then begin
+            if not Confirm(GlobalConfirmQst) then
+                exit;
+
+            if not Customer.Get(SalesHeader."Sell-to Customer No.") then
+                exit;
+
+            if not Customer."Transfer Comment" then
+                exit;
+
+            SalesLine."ESD Comment" := Customer."ESD Comment";
             exit;
         end;
-
-        GlobalSalesandReceivableSetup."Confirmation for ESD Comment" := true;
-        if not GlobalSalesandReceivableSetup."Confirmation for ESD Comment" then
-            exit;
 
         if not Customer.Get(SalesHeader."Sell-to Customer No.") then
             exit;
@@ -30,13 +35,21 @@ codeunit 50100 TransferESDComment
         Vendor: Record Vendor;
     begin
         GlobalSalesandReceivableSetup.Get();
-        if not Confirm(GlobalConfirmQst) then begin
-            GlobalSalesandReceivableSetup."Confirmation for ESD Comment" := false;
+        if GlobalSalesandReceivableSetup."Confirmation for ESD Comment" then begin
+            if not Confirm(GlobalConfirmQst) then
+                exit;
+
+            if not Vendor.Get(PurchHeader."Buy-from Vendor No.") then
+                exit;
+
+            if not Vendor."Transfer Comment" then
+                exit;
+
+            PurchLine."ESD Comment" := Vendor."ESD Comment";
             exit;
         end;
 
-        GlobalSalesandReceivableSetup."Confirmation for ESD Comment" := true;
-        if not GlobalSalesandReceivableSetup."Confirmation for ESD Comment" then
+        if GlobalSalesandReceivableSetup."Confirmation for ESD Comment" then
             exit;
 
         if not Vendor.Get(PurchHeader."Buy-from Vendor No.") then

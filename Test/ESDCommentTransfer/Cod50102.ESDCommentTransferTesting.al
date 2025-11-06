@@ -391,12 +391,12 @@ codeunit 50102 "ESD Comment Transfer Testing"
 
     local procedure VerifyCommentValueOnCust()
     begin
-        GlobalAssert.AreEqual(GlobalComment, GlobalCustomer."ESD Comment", 'ESD Comment value on Customer does not match the expected value.');
+        GlobalAssert.AreEqual(GlobalComment, GlobalCustomer."ESD Comment", GlobalValueShouldbeMatch);
     end;
 
     local procedure VerifyCommentValueOnVend()
     begin
-        GlobalAssert.AreEqual(GlobalComment, GlobalVendor."ESD Comment", 'ESD Comment value on Vendor does not match the expected value.');
+        GlobalAssert.AreEqual(GlobalComment, GlobalVendor."ESD Comment", GlobalValueShouldbeMatch);
     end;
 
     local procedure VerifyPostedCommentTransferPurchase(AreEqual: Boolean)
