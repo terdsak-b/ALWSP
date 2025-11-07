@@ -8,6 +8,11 @@ codeunit 50007 ReplacementItemMgt
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post (Yes/No)", OnAfterConfirmPost, '', false, false)]
     local procedure ReplaceItem(var SalesHeader: Record "Sales Header"; Ishandled: Boolean)
+    begin
+        ReplaceItemsInSalesOrder(SalesHeader);
+    end;
+
+    procedure ReplaceItemsInSalesOrder(var SalesHeader: Record "Sales Header")
     var
         SalesLine: Record "Sales Line";
         Item: Record Item;
@@ -21,26 +26,17 @@ codeunit 50007 ReplacementItemMgt
                 if Item.Get(SalesLine."No.") then begin
                     ItemLedgerEntry.SetRange("Item No.", Item."No.");
                     ItemLedgerEntry.CalcSums(Quantity);
-                    if (Item."Replacement Item" <> '') and (ItemLedgerEntry.Quantity < SalesLine.Quantity) and Confirm(StrSubstNo(ConfirmMsgPart, Item."No.", Item."Replacement Item")) then
-                        ReplaceItemsInSalesOrder(SalesHeader);
+                    if (Item."Replacement Item" <> '') and (ItemLedgerEntry.Quantity < SalesLine.Quantity) then
+                        if Confirm(StrSubstNo(ConfirmMsgPart, Item."No.", Item."Replacement Item")) then
+                            if SalesLine.FindSet(true) then
+                                repeat
+                                    if Item.Get(SalesLine."No.") then begin
+                                        SalesLine."No." := Item."Replacement Item";
+                                        SalesLine.Modify();
+                                    end;
+                                until SalesLine.Next() = 0;
+                    SalesHeader.Modify(true);
                 end;
             until SalesLine.Next() = 0;
-    end;
-
-    local procedure ReplaceItemsInSalesOrder(var SalesHeader: Record "Sales Header")
-    var
-        SalesLine: Record "Sales Line";
-        Item: Record Item;
-    begin
-        SalesLine.SetRange("Document No.", SalesHeader."No.");
-
-        if SalesLine.FindSet(true) then
-            repeat
-                if Item.Get(SalesLine."No.") then begin
-                    SalesLine."No." := Item."Replacement Item";
-                    SalesLine.Modify();
-                end;
-            until SalesLine.Next() = 0;
-        SalesHeader.Modify(true);
     end;
 }
