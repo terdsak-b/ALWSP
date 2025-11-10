@@ -17,7 +17,7 @@ codeunit 50007 ReplacementItemMgt
         SalesLine: Record "Sales Line";
         Item: Record Item;
         ItemLedgerEntry: Record "Item Ledger Entry";
-        ConfirmMsgPart: Label 'Do you want to replace item %1 to %2 in this sales order?';
+        ConfirmMsgPart: Label 'Current item does not have enough stock.\Do you want to replace item %1 to %2 in this sales order?';
     begin
         SalesLine.SetRange("Document No.", SalesHeader."No.");
 

@@ -69,16 +69,16 @@ codeunit 50008 "Test Replacement Item"
         Initialize();
 
         // [WHEN] Checking item exist
-        CheckItemExist();
+        CheckPostedShipmentItemExist();
 
         // [THEN] Stock of "R000x" should decrease
-        VerifyReplacementItemStockDecreased();
+        VerifyReplacementItem();
     end;
 
     [ConfirmHandler]
     procedure ConfirmHandler(Question: Text; var Answer: Boolean)
     var
-        ExpectedConfirmMsgPart: Label 'Do you want to replace item %1 to %2 in this sales order?';
+        ExpectedConfirmMsgPart: Label 'Current item does not have enough stock.\Do you want to replace item %1 to %2 in this sales order?';
     begin
         Answer := true;
 
@@ -86,22 +86,48 @@ codeunit 50008 "Test Replacement Item"
             GlobalAssert.AreEqual(StrSubstNo(ExpectedConfirmMsgPart, GlobalItem."No.", GlobalItem."Replacement Item"), Question, GlobalValueShouldBeMatched);
     end;
 
-    local procedure CheckItemExist()
+    local procedure CheckPostedShipmentItemExist()
+    var
+        SalesShipmentLine: Record "Sales Shipment Line";
     begin
-        if GlobalMainItemCode = '' then
-            exit;
+        if GlobalReplacementItemCode = '' then begin
+            GlobalSalesShipmentHeader.FindLast();
+            SalesShipmentLine.SetRange("Document No.", GlobalSalesShipmentHeader."No.");
+            SalesShipmentLine.SetRange(Type, "Sales Line Type"::Item);
+            GlobalAssert.RecordCount(SalesShipmentLine, 1);
+            SalesShipmentLine.FindFirst();
+
+            GlobalReplacementItemCode := SalesShipmentLine."No.";
+
+            if CopyStr(GlobalReplacementItemCode, 1, 1) <> 'R' then
+                exit;
+        end;
     end;
 
-    local procedure VerifyReplacementItemStockDecreased()
+    local procedure VerifyReplacementItem()
     var
-        ItemLedgerEntry: Record "Item Ledger Entry";
-
+        SalesShipmentLine: Record "Sales Shipment Line";
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
     begin
-        if GlobalItem.Get(GlobalReplacementItemCode) then begin
-            ItemLedgerEntry.SetRange("Item No.", GlobalReplacementItemCode);
-            ItemLedgerEntry.CalcSums(Quantity);
-            GlobalAssert.AreEqual(5, ItemLedgerEntry.Quantity, GlobalValueShouldBeMatched);
-        end;
+        SalesHeader.SetRange(Status, SalesHeader.Status::Released);
+        SalesHeader.FindLast();
+        SalesLine.SetRange("Document No.", SalesHeader."No.");
+        SalesLine.SetRange(Type, "Sales Line Type"::Item);
+        GlobalAssert.RecordCount(SalesLine, 1);
+        SalesLine.FindFirst();
+
+        if CopyStr(SalesLine."No.", 1, 1) <> 'R' then
+            exit;
+
+        SalesShipmentLine.SetRange("Document No.", GlobalSalesShipmentHeader."No.");
+        SalesShipmentLine.SetRange(Type, "Sales Line Type"::Item);
+        GlobalAssert.RecordCount(SalesShipmentLine, 1);
+        SalesShipmentLine.FindFirst();
+
+        GlobalAssert.AreEqual(SalesLine."No.", SalesShipmentLine."No.", GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(SalesLine."Quantity Shipped", SalesShipmentLine.Quantity, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(SalesLine."Location Code", SalesShipmentLine."Location Code", GlobalValueShouldBeMatched);
     end;
 
     local procedure PostingSaleOrderAndConfirmingReplacement()
@@ -117,7 +143,13 @@ codeunit 50008 "Test Replacement Item"
     local procedure VerifyPostedSalesOrderWithReplacementItem()
     var
         SalesShipmentLine: Record "Sales Shipment Line";
+        SalesLine: Record "Sales Line";
     begin
+        SalesLine.SetRange("Document No.", GlobalSalesHeader."No.");
+        SalesLine.SetRange(Type, "Sales Line Type"::Item);
+        GlobalAssert.RecordCount(SalesLine, 1);
+        SalesLine.FindFirst();
+
         SalesShipmentLine.SetRange("Document No.", GlobalSalesShipmentHeader."No.");
         SalesShipmentLine.SetRange(Type, "Sales Line Type"::Item);
         GlobalAssert.RecordCount(SalesShipmentLine, 1);
@@ -125,8 +157,11 @@ codeunit 50008 "Test Replacement Item"
 
         if GlobalItem.Get(GlobalMainItemCode) then begin
             GlobalAssert.AreEqual(GlobalItem."Replacement Item", SalesShipmentLine."No.", GlobalValueShouldBeMatched);
-            GlobalAssert.AreEqual(5, SalesShipmentLine.Quantity, GlobalValueShouldBeMatched);
-            GlobalAssert.AreEqual('', SalesShipmentLine."Location Code", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(GlobalItem."Replacement Item", SalesLine."No.", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(SalesLine."No.", SalesShipmentLine."No.", GlobalValueShouldBeMatched);
+
+            GlobalAssert.AreEqual(SalesLine."Quantity Shipped", SalesShipmentLine.Quantity, GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(SalesLine."Location Code", SalesShipmentLine."Location Code", GlobalValueShouldBeMatched);
         end;
     end;
 
