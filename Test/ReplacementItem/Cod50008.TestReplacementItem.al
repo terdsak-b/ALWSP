@@ -248,8 +248,7 @@ codeunit 50008 "Test Replacement Item"
 
             CreateInventoryPostingSetup('', ItemJnlLine."Inventory Posting Group");
 
-            GlobalLibraryInventory.PostItemJournalLine(ItemJnlLine."Journal Template Name",
-                                                 ItemJnlLine."Journal Batch Name");
+            GlobalLibraryInventory.PostItemJournalLine(ItemJnlLine."Journal Template Name", ItemJnlLine."Journal Batch Name");
         end;
     end;
 

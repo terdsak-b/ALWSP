@@ -1,17 +1,15 @@
 namespace ALWSP.ALWSP;
 using Microsoft.Sales.Document;
-using Microsoft.Sales.Posting;
-using Microsoft.Purchases.Posting;
+using Microsoft.Warehouse.Document;
 using Microsoft.Purchases.Document;
 
-codeunit 50009 OrderStatusManegement
+codeunit 50009 OrderStatusManagement
 {
-    procedure UpdatePurchaseLineStatus(var PurchaseHeader: Record "Purchase Header")
+    procedure UpdatePurchaseLineStatus(var WarehouseReceiptLine: Record "Warehouse Receipt Line")
     var
         PurchaseLine: Record "Purchase Line";
     begin
-        PurchaseLine.SetRange("Document Type", PurchaseHeader."Document Type");
-        PurchaseLine.SetRange("Document No.", PurchaseHeader."No.");
+        PurchaseLine.SetRange("Document No.", WarehouseReceiptLine."Source No.");
 
         if PurchaseLine.FindSet(true) then
             repeat
@@ -25,12 +23,11 @@ codeunit 50009 OrderStatusManegement
             until PurchaseLine.Next() = 0;
     end;
 
-    procedure UpdateSalesLineStatus(var SalesHeader: Record "Sales Header")
+    procedure UpdateSalesLineStatus(var WarehouseShipmentLine: Record "Warehouse Shipment Line")
     var
         SalesLine: Record "Sales Line";
     begin
-        SalesLine.SetRange("Document Type", SalesHeader."Document Type");
-        SalesLine.SetRange("Document No.", SalesHeader."No.");
+        SalesLine.SetRange("Document No.", WarehouseShipmentLine."Source No.");
 
         if SalesLine.FindSet(true) then
             repeat
@@ -44,15 +41,15 @@ codeunit 50009 OrderStatusManegement
             until SalesLine.Next() = 0;
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post (Yes/No)", OnAfterPost, '', false, false)]
-    local procedure UpdatePurchaseLine(var PurchaseHeader: Record "Purchase Header")
+    [EventSubscriber(ObjectType::Page, Page::"Whse. Receipt Subform", OnAfterWhsePostRcptYesNo, '', false, false)]
+    local procedure UpdatePurchaseLine(var WarehouseReceiptLine: Record "Warehouse Receipt Line")
     begin
-        UpdatePurchaseLineStatus(PurchaseHeader);
+        UpdatePurchaseLineStatus(WarehouseReceiptLine);
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post (Yes/No)", OnAfterPost, '', false, false)]
-    local procedure UpdateSalesLine(var SalesHeader: Record "Sales Header"; PostAndSend: Boolean)
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Whse.-Post Shipment (Yes/No)", OnAfterCode, '', false, false)]
+    local procedure UpdateSalesLine(var WarehouseShipmentLine: Record "Warehouse Shipment Line")
     begin
-        UpdateSalesLineStatus(SalesHeader);
+        UpdateSalesLineStatus(WarehouseShipmentLine);
     end;
 }
