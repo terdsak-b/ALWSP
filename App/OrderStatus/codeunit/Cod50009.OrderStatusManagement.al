@@ -15,9 +15,9 @@ codeunit 50009 OrderStatusManagement
             repeat
                 case true of
                     PurchaseLine."Quantity Received" = PurchaseLine.Quantity:
-                        PurchaseLine.Status := PurchaseLine.Status::Completed;
+                        PurchaseLine."Order Status" := PurchaseLine."Order Status"::Completed;
                     PurchaseLine."Quantity Received" > 0:
-                        PurchaseLine.Status := PurchaseLine.Status::Partial;
+                        PurchaseLine."Order Status" := PurchaseLine."Order Status"::Partial;
                 end;
                 PurchaseLine.Modify();
             until PurchaseLine.Next() = 0;
@@ -33,22 +33,22 @@ codeunit 50009 OrderStatusManagement
             repeat
                 case true of
                     SalesLine."Quantity Shipped" = SalesLine.Quantity:
-                        SalesLine.Status := SalesLine.Status::Completed;
+                        SalesLine."Order Status" := SalesLine."Order Status"::Completed;
                     SalesLine."Quantity Shipped" > 0:
-                        SalesLine.Status := SalesLine.Status::Partial;
+                        SalesLine."Order Status" := SalesLine."Order Status"::Partial;
                 end;
                 SalesLine.Modify();
             until SalesLine.Next() = 0;
     end;
 
-    [EventSubscriber(ObjectType::Page, Page::"Whse. Receipt Subform", OnAfterWhsePostRcptYesNo, '', false, false)]
-    local procedure UpdatePurchaseLine(var WarehouseReceiptLine: Record "Warehouse Receipt Line")
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Whse.-Post Receipt", OnAfterRun, '', false, false)]
+    local procedure OnAfterRunWhsePostReceipt(var WarehouseReceiptLine: Record "Warehouse Receipt Line")
     begin
         UpdatePurchaseLineStatus(WarehouseReceiptLine);
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Whse.-Post Shipment (Yes/No)", OnAfterCode, '', false, false)]
-    local procedure UpdateSalesLine(var WarehouseShipmentLine: Record "Warehouse Shipment Line")
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Whse.-Post Shipment", OnAfterRun, '', false, false)]
+    local procedure OnAfterRunWhsePostShipment(var WarehouseShipmentLine: Record "Warehouse Shipment Line"; PreviewMode: Boolean)
     begin
         UpdateSalesLineStatus(WarehouseShipmentLine);
     end;

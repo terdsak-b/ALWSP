@@ -6,9 +6,9 @@ tableextension 50001 SalesLineStatus extends "Sales Line"
 {
     fields
     {
-        field(50000; Status; Enum "Order Status")
+        field(50000; "Order Status"; Enum "Order Status")
         {
-            Caption = 'Status';
+            Caption = 'Order Status';
             InitValue = Open;
         }
     }

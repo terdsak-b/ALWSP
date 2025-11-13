@@ -1,18 +1,3 @@
-namespace ALWSP.ALWSP;
-using Microsoft.Inventory.Location;
-using Microsoft.Purchases.Vendor;
-using Microsoft.Inventory.Ledger;
-using Microsoft.Inventory.Journal;
-using Microsoft.Sales.Document;
-using Microsoft.Sales.Customer;
-using Microsoft.Warehouse.Document;
-using Microsoft.Finance.GeneralLedger.Setup;
-using Microsoft.Finance.VAT.Setup;
-using Microsoft.Warehouse.Setup;
-using Microsoft.Finance.GeneralLedger.Account;
-using Microsoft.Purchases.Document;
-using Microsoft.Inventory.Item;
-
 codeunit 50010 "Test Order Status Ctrl.Locat"
 {
     Subtype = Test;
@@ -31,9 +16,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         GlobalWarehouseShipmentHeader: Record "Warehouse Shipment Header";
         GlobalWarehouseShipmentLine: Record "Warehouse Shipment Line";
         GlobalAssert: Codeunit "Assert";
-        GlobalIsHandled: Boolean;
         GlobalValueShouldBeMatched: Label 'Values should be matched';
-        GlobalValueShouldNotbeEmpty: Label 'Value should not be empty';
 
     [Test]
     procedure "00_GenaralSetupforCreatePurchAndSalesOrderWithCtrlWarehouse"()
@@ -48,38 +31,38 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         CheckSetupDataAvailable();
     end;
 
-
     [Test]
     procedure "01_CreatePurchaseOrderWithPartiallyPosted"()
     begin
-        // [SCENARIO] Create a purchase order with location and verify order status
+        // [SCENARIO] Create a purchase order with location and verify order status partially posted
         Initialize();
 
         // [GIVEN] location setup with controlled location enabled and vendor with location receiving setup
         //         and setup item with a quantity on hand in the controlled location
-        SetupDataforPurchOrder();
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
 
         // [WHEN] A purchase order is created with a specific location and create warehouse receipt and partially posted
-        CreatePurchaseOrderAndCreateWhseReceiptAndPost(false);
+        CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(1);
 
         // [THEN] The order status should reflect the correct location information
-        CheckPurchaseOrderAndWhseReceiptPartiallyPosted();
+        CheckPurchaseOrderAndWarehouseReceiptPartiallyPosted();
     end;
 
     [Test]
     procedure "02_CreateSalesOrderWithPartiallyPosted"()
     begin
-        // [SCENARIO] Create a sales order with location and verify order status
+        // [SCENARIO] Create a sales order with location and verify order status partially posted
         Initialize();
 
-        // [GIVEN] A sales order is created with a specific location 
-        SetupDataforSalesOrder();
+        // [GIVEN] location setup with controlled location enabled and customer with location shipping setup
+        //         and setup item with a quantity on hand in the controlled location
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
 
-        // [WHEN] The order status is created with a specific location and partially posted
-        CreateSalesOrderAndWhseShipmentAndPost(false);
+        // [WHEN] A sales order is created with a specific location and partially posted
+        CreateSalesOrderAndWarehouseShipmentAndPost(1);
 
         // [THEN] The order status should reflect the correct location information
-        CheckSalesOrderAndWhseShipmentPartiallyPosted();
+        CheckSalesOrderAndWarehouseShipmentPartiallyPosted();
     end;
 
     [Test]
@@ -88,14 +71,15 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         // [SCENARIO] Create a purchase order and fully post with location and verify order status
         Initialize();
 
-        // [GIVEN] A purchase order is created with a specific location
-        SetupDataforPurchOrder();
+        // [GIVEN] location setup with controlled location enabled and vendor with location receiving setup
+        //         and setup item with a quantity on hand in the controlled location
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
 
-        // [WHEN] The order is fully posted
-        CreatePurchaseOrderAndCreateWhseReceiptAndPost(true);
+        // [WHEN] A purchase order is created with a specific location and fully posted
+        CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(2);
 
         // [THEN] The order status should reflect the correct location information
-        CheckPurchaseOrderAndWhseReceiptFullyPosted();
+        CheckPurchaseOrderFullyPosted();
     end;
 
     [Test]
@@ -104,103 +88,81 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         // [SCENARIO] Create a sales order and fully post with location and verify order status
         Initialize();
 
-        // [GIVEN] A sales order is created with a specific location
-        SetupDataforSalesOrder();
+        // [GIVEN] location setup with controlled location enabled and customer with location shipping setup
+        //         and setup item with a quantity on hand in the controlled location
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
 
-        // [WHEN] The order is fully posted
-        CreateSalesOrderAndWhseShipmentAndPost(true);
+        // [WHEN] A sales order is created with a specific location and fully posted
+        CreateSalesOrderAndWarehouseShipmentAndPost(2);
 
         // [THEN] The order status should reflect the correct location information
-        CheckSalesOrderAndWhseShipmentFullyPosted();
+        CheckSalesOrderFullyPosted();
     end;
 
     [Test]
-    procedure "05_CheckPostedPurchOrderAndSalesOrderWithPartiallyPosted"()
+    procedure "05_CreatePurchOrderWithMultiPosted"()
     begin
-        // [SCENARIO] Check a posted purchase order and posted sales order with location and partially posted
+        // [SCENARIO] Create a purchase order and multi post with location and verify order status
         Initialize();
 
-        // [GIVEN] A purchase order and sales order is partially posted with a specific location
-        SetupDataforPurchOrder();
+        // [GIVEN] location setup with controlled location enabled and vendor with location receiving setup
+        //         and setup item with a quantity on hand in the controlled location
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
 
-        // [WHEN] The order status is checked and partially posted
-        GetPartiallyPostedPurchaseOrderAndSalesOrder();
+        // [WHEN] The order is multi posted
+        CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(3);
 
         // [THEN] The order status should reflect the correct location information
+        CheckPurchaseOrderAndWarehouseReceiptMultiPosted();
     end;
 
     [Test]
-    procedure "06_CheckPostedPurchOrderAndSalesOrderWithFullyPosted"()
+    procedure "06_CreateSalesOrderWithMultiPosted"()
     begin
-        // [SCENARIO] Check a posted purchase order and posted sales order with location and fully posted
+        // [SCENARIO] Create a sales order and multi post with location and verify order status
         Initialize();
 
-        // [GIVEN] A purchase order and sales order is fully posted with a specific location
-        SetupDataforSalesOrder();
+        // [GIVEN] location setup with controlled location enabled and customer with location shipping setup
+        //         and setup item with a quantity on hand in the controlled location
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
+
+        // [WHEN] The order is multi posted
+        CreateSalesOrderAndWarehouseShipmentAndPost(3);
+
+        // [THEN] The order status should reflect the correct location information
+        CheckSalesOrderAndWarehouseShipmentMultiPosted();
+    end;
+
+    [Test]
+    procedure "07_CheckPostedPurchOrderWithPartiallyFullyAndMultiPosted"()
+    begin
+        // [SCENARIO] Check a posted purchase order with partially, fully and multi posted
+        Initialize();
+
+        // [GIVEN] A purchase order is partially, fully and multi posted with a specific location
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
 
         // [WHEN] The order status is checked
-        GetFullyPostedPurchaseOrderAndSalesOrder();
+        GetPartiallyFullyAndMultiPostedPurchaseOrder();
 
         // [THEN] The order status should reflect the correct location information
+        CheckPurchaseOrder();
     end;
 
-    local procedure GetFullyPostedPurchaseOrderAndSalesOrder()
+    [Test]
+    procedure "08_CheckPostedSalesOrderWithPartiallyFullyAndMultiPosted"()
     begin
-        // Implementation for getting fully posted purchase order and sales order
-    end;
+        // [SCENARIO] Check a posted sales order with partially, fully and multi posted
+        Initialize();
 
-    local procedure GetPartiallyPostedPurchaseOrderAndSalesOrder()
-    var
-        WarehouseReceiptHeader: Record "Warehouse Receipt Header";
-        WarehouseReceiptLine: Record "Warehouse Receipt Line";
-        WarehouseShipmentHeader: Record "Warehouse Shipment Header";
-        WarehouseShipmentLine: Record "Warehouse Shipment Line";
-    begin
-        // Implementation for getting partially posted purchase order and sales order
-        GlobalSalesHeader.SetRange("Document Type", GlobalSalesHeader."Document Type"::Order);
-        GlobalSalesHeader.SetRange(Status, GlobalSalesHeader.Status::Released);
-        GlobalSalesHeader.SetRange("Location Code", GlobalLocation.Code);
-        GlobalSalesHeader.SetRange("Sell-to Customer No.", GlobalCustomer."No.");
+        // [GIVEN] A sales order is partially, fully and multi posted with a specific location
+        CreateSetupDataforPurchaseOrderAndSalesOrder();
 
+        // [WHEN] The order status is checked
+        GetPartialliFullyAndMultiPostedSalesOrder();
 
-        GlobalPurchaseHeader.SetRange("Document Type", GlobalPurchaseHeader."Document Type"::Order);
-        GlobalPurchaseHeader.SetRange(Status, GlobalPurchaseHeader.Status::Released);
-        GlobalPurchaseHeader.SetRange("Location Code", GlobalLocation.Code);
-        GlobalPurchaseHeader.SetRange("Pay-to Vendor No.", GlobalVendor."No.");
-    end;
-
-    local procedure CheckPurchaseOrderAndWhseReceiptFullyPosted()
-    var
-        WarehouseReceiptHeader: Record "Warehouse Receipt Header";
-        WarehouseReceiptLine: Record "Warehouse Receipt Line";
-    begin
-        WarehouseReceiptLine.SetRange("Source No.", GlobalPurchaseHeader."No.");
-        GlobalPurchaseLine.SetRange("Document No.", GlobalPurchaseHeader."No.");
-
-        if WarehouseReceiptLine.FindSet() and GlobalPurchaseLine.FindSet() then
-            repeat
-                GlobalAssert.AreEqual(GlobalPurchaseLine."No.", WarehouseReceiptLine."Item No.", GlobalValueShouldBeMatched);
-                GlobalAssert.AreEqual(GlobalPurchaseLine."Location Code", WarehouseReceiptLine."Location Code", GlobalValueShouldBeMatched);
-                GlobalAssert.AreEqual(GlobalPurchaseLine.Quantity, WarehouseReceiptLine.Quantity, GlobalValueShouldBeMatched);
-                GlobalAssert.AreEqual(GlobalPurchaseLine.Quantity, WarehouseReceiptLine."Qty. Received", GlobalValueShouldBeMatched);
-            until (WarehouseReceiptLine.Next() = 0) and (GlobalPurchaseLine.Next() = 0);
-    end;
-
-    local procedure CheckSalesOrderAndWhseShipmentFullyPosted()
-    var
-        WarehouseShipmentHeader: Record "Warehouse Shipment Header";
-        WarehouseShipmentLine: Record "Warehouse Shipment Line";
-    begin
-        WarehouseShipmentLine.SetRange("Source No.", GlobalSalesHeader."No.");
-        GlobalSalesLine.SetRange("Document No.", GlobalSalesHeader."No.");
-
-        if WarehouseShipmentLine.FindSet() and GlobalSalesLine.FindSet() then
-            repeat
-                GlobalAssert.AreEqual(GlobalSalesLine."No.", WarehouseShipmentLine."Item No.", GlobalValueShouldBeMatched);
-                GlobalAssert.AreEqual(GlobalSalesLine."Location Code", WarehouseShipmentLine."Location Code", GlobalValueShouldBeMatched);
-                GlobalAssert.AreEqual(GlobalSalesLine.Quantity, WarehouseShipmentLine.Quantity, GlobalValueShouldBeMatched);
-                GlobalAssert.AreEqual(GlobalSalesLine.Quantity, WarehouseShipmentLine."Qty. Shipped", GlobalValueShouldBeMatched);
-            until (WarehouseShipmentLine.Next() = 0) and (GlobalSalesLine.Next() = 0);
+        // [THEN] The order status should reflect the correct location information
+        CheckSalesOrder();
     end;
 
     local procedure CheckInsertVATPostingSetup(GetVATBus: Code[20]; GetVATProd: Code[20])
@@ -220,47 +182,198 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         VATPostingSetup.Modify();
     end;
 
-    local procedure CheckPurchaseOrderAndWhseReceiptPartiallyPosted()
+    local procedure CheckPurchaseOrder()
     var
-        WarehouseReceiptHeader: Record "Warehouse Receipt Header";
+        Number: Integer;
+    begin
+        if GlobalPurchaseHeader.IsEmpty() then
+            for Number := 1 to 3 do
+                CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(Number);
+
+        if GlobalPurchaseHeader.FindSet() then
+            repeat
+                case true of
+                    GlobalPurchaseHeader."Posting Description".Contains('TEST_PO_P'):
+                        CheckPurchaseOrderAndWarehouseReceiptPartiallyPosted();
+                    GlobalPurchaseHeader."Posting Description".Contains('TEST_PO_F'):
+                        CheckPurchaseOrderFullyPosted();
+                    GlobalPurchaseHeader."Posting Description".Contains('TEST_PO_M'):
+                        CheckPurchaseOrderAndWarehouseReceiptMultiPosted();
+                end;
+
+            until GlobalPurchaseHeader.Next() = 0;
+    end;
+
+    local procedure CheckPurchaseOrderAndWarehouseReceiptMultiPosted()
+    var
+        PurchRcptHeader: Record "Purch. Rcpt. Header";
+        PurchRcptLine: Record "Purch. Rcpt. Line";
         WarehouseReceiptLine: Record "Warehouse Receipt Line";
     begin
         WarehouseReceiptLine.SetRange("Source No.", GlobalPurchaseHeader."No.");
         GlobalPurchaseLine.SetRange("Document No.", GlobalPurchaseHeader."No.");
+        if WarehouseReceiptLine.FindFirst() and GlobalPurchaseLine.FindFirst() then begin
+            GlobalAssert.AreEqual(GlobalPurchaseLine."No.", WarehouseReceiptLine."Item No.", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(GlobalPurchaseLine."Location Code", WarehouseReceiptLine."Location Code", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(GlobalPurchaseLine.Quantity, WarehouseReceiptLine.Quantity, GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(GlobalPurchaseLine."Quantity Received", WarehouseReceiptLine."Qty. Received", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual("Order Status"::"Partial", GlobalPurchaseLine."Order Status", GlobalValueShouldBeMatched);
+        end;
 
+        PurchRcptHeader.SetRange("Order No.", GlobalPurchaseHeader."No.");
+        GlobalAssert.RecordCount(PurchRcptHeader, 1);
+        PurchRcptHeader.FindFirst();
+        PurchRcptLine.SetRange("Document No.", PurchRcptHeader."No.");
+        if GlobalPurchaseLine.FindSet() and PurchRcptLine.FindSet() then
+            repeat
+                GlobalAssert.AreEqual(GlobalPurchaseLine."No.", PurchRcptLine."No.", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalPurchaseLine."Location Code", PurchRcptLine."Location Code", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalPurchaseLine."Quantity Received", PurchRcptLine.Quantity, GlobalValueShouldBeMatched);
+                if GlobalPurchaseLine.Quantity > GlobalPurchaseLine."Quantity Received" then
+                    GlobalAssert.AreEqual("Order Status"::"Partial", GlobalPurchaseLine."Order Status", GlobalValueShouldBeMatched)
+                else
+                    GlobalAssert.AreEqual("Order Status"::"Completed", GlobalPurchaseLine."Order Status", GlobalValueShouldBeMatched);
+            until (GlobalPurchaseLine.Next() = 0) and (PurchRcptLine.Next() = 0);
+    end;
+
+    local procedure CheckPurchaseOrderAndWarehouseReceiptPartiallyPosted()
+    var
+        WarehouseReceiptLine: Record "Warehouse Receipt Line";
+    begin
+        WarehouseReceiptLine.SetRange("Source No.", GlobalPurchaseHeader."No.");
+        GlobalPurchaseLine.SetRange("Document No.", GlobalPurchaseHeader."No.");
         if WarehouseReceiptLine.FindSet() and GlobalPurchaseLine.FindSet() then
             repeat
                 GlobalAssert.AreEqual(GlobalPurchaseLine."No.", WarehouseReceiptLine."Item No.", GlobalValueShouldBeMatched);
                 GlobalAssert.AreEqual(GlobalPurchaseLine."Location Code", WarehouseReceiptLine."Location Code", GlobalValueShouldBeMatched);
                 GlobalAssert.AreEqual(GlobalPurchaseLine.Quantity, WarehouseReceiptLine.Quantity, GlobalValueShouldBeMatched);
                 GlobalAssert.AreEqual(GlobalPurchaseLine."Quantity Received", WarehouseReceiptLine."Qty. Received", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual("Order Status"::"Partial", GlobalPurchaseLine."Order Status", GlobalValueShouldBeMatched);
             until (WarehouseReceiptLine.Next() = 0) and (GlobalPurchaseLine.Next() = 0);
     end;
 
-    local procedure CheckSalesOrderAndWhseShipmentPartiallyPosted()
+    local procedure CheckPurchaseOrderFullyPosted()
     var
-        WarehouseShipmentHeader: Record "Warehouse Shipment Header";
+        PurchRcptHeader: Record "Purch. Rcpt. Header";
+        PurchRcptLine: Record "Purch. Rcpt. Line";
+        WarehouseReceiptLine: Record "Warehouse Receipt Line";
+    begin
+        WarehouseReceiptLine.SetRange("Source No.", GlobalPurchaseHeader."No.");
+        GlobalAssert.RecordIsEmpty(WarehouseReceiptLine);
+
+        GlobalPurchaseLine.SetRange("Document No.", GlobalPurchaseHeader."No.");
+        PurchRcptHeader.SetRange("Order No.", GlobalPurchaseHeader."No.");
+        GlobalAssert.RecordCount(PurchRcptHeader, 1);
+        PurchRcptHeader.FindFirst();
+        PurchRcptLine.SetRange("Document No.", PurchRcptHeader."No.");
+        if GlobalPurchaseLine.FindSet() and PurchRcptLine.FindSet() then
+            repeat
+                GlobalAssert.AreEqual(GlobalPurchaseLine."No.", PurchRcptLine."No.", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalPurchaseLine."Location Code", PurchRcptLine."Location Code", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalPurchaseLine.Quantity, PurchRcptLine.Quantity, GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual("Order Status"::"Completed", GlobalPurchaseLine."Order Status", GlobalValueShouldBeMatched);
+            until (GlobalPurchaseLine.Next() = 0) and (PurchRcptLine.Next() = 0);
+    end;
+
+    local procedure CheckSalesOrder()
+    var
+        CaseCount: Integer;
+    begin
+        if GlobalSalesHeader.IsEmpty() then
+            for CaseCount := 1 to 3 do
+                CreateSalesOrderAndWarehouseShipmentAndPost(CaseCount);
+        if GlobalSalesHeader.FindSet() then
+            repeat
+                case true of
+                    GlobalSalesHeader."Posting Description".Contains('TEST_SO_P'):
+                        CheckSalesOrderAndWarehouseShipmentPartiallyPosted();
+                    GlobalSalesHeader."Posting Description".Contains('TEST_SO_F'):
+                        CheckSalesOrderFullyPosted();
+                    GlobalSalesHeader."Posting Description".Contains('TEST_SO_M'):
+                        CheckSalesOrderAndWarehouseShipmentMultiPosted();
+                end;
+
+            until GlobalSalesHeader.Next() = 0;
+    end;
+
+    local procedure CheckSalesOrderAndWarehouseShipmentMultiPosted()
+    var
+        SalesShipmentHeader: Record "Sales Shipment Header";
+        SalesShipmentLine: Record "Sales Shipment Line";
         WarehouseShipmentLine: Record "Warehouse Shipment Line";
     begin
         WarehouseShipmentLine.SetRange("Source No.", GlobalSalesHeader."No.");
         GlobalSalesLine.SetRange("Document No.", GlobalSalesHeader."No.");
+        if WarehouseShipmentLine.FindFirst() and GlobalSalesLine.FindFirst() then begin
+            GlobalAssert.AreEqual(GlobalSalesLine."No.", WarehouseShipmentLine."Item No.", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(GlobalSalesLine."Location Code", WarehouseShipmentLine."Location Code", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(GlobalSalesLine.Quantity, WarehouseShipmentLine.Quantity, GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual(GlobalSalesLine."Quantity Shipped", WarehouseShipmentLine."Qty. Shipped", GlobalValueShouldBeMatched);
+            GlobalAssert.AreEqual("Order Status"::"Partial", GlobalSalesLine."Order Status", GlobalValueShouldBeMatched);
+        end;
 
+        SalesShipmentHeader.SetRange("Order No.", GlobalSalesHeader."No.");
+        GlobalAssert.RecordCount(SalesShipmentHeader, 1);
+        SalesShipmentHeader.FindFirst();
+        SalesShipmentLine.SetRange("Document No.", SalesShipmentHeader."No.");
+        if GlobalSalesLine.FindSet() and SalesShipmentLine.FindSet() then
+            repeat
+                GlobalAssert.AreEqual(GlobalSalesLine."No.", SalesShipmentLine."No.", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalSalesLine."Location Code", SalesShipmentLine."Location Code", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalSalesLine."Quantity Shipped", SalesShipmentLine.Quantity, GlobalValueShouldBeMatched);
+
+                if GlobalSalesLine.Quantity > GlobalSalesLine."Quantity Shipped" then
+                    GlobalAssert.AreEqual("Order Status"::"Partial", GlobalSalesLine."Order Status", GlobalValueShouldBeMatched)
+                else
+                    GlobalAssert.AreEqual("Order Status"::"Completed", GlobalSalesLine."Order Status", GlobalValueShouldBeMatched);
+            until (GlobalSalesLine.Next() = 0) and (SalesShipmentLine.Next() = 0);
+    end;
+
+    local procedure CheckSalesOrderAndWarehouseShipmentPartiallyPosted()
+    var
+        WarehouseShipmentLine: Record "Warehouse Shipment Line";
+    begin
+        WarehouseShipmentLine.SetRange("Source No.", GlobalSalesHeader."No.");
+        GlobalSalesLine.SetRange("Document No.", GlobalSalesHeader."No.");
         if WarehouseShipmentLine.FindSet() and GlobalSalesLine.FindSet() then
             repeat
                 GlobalAssert.AreEqual(GlobalSalesLine."No.", WarehouseShipmentLine."Item No.", GlobalValueShouldBeMatched);
                 GlobalAssert.AreEqual(GlobalSalesLine."Location Code", WarehouseShipmentLine."Location Code", GlobalValueShouldBeMatched);
                 GlobalAssert.AreEqual(GlobalSalesLine.Quantity, WarehouseShipmentLine.Quantity, GlobalValueShouldBeMatched);
                 GlobalAssert.AreEqual(GlobalSalesLine."Quantity Shipped", WarehouseShipmentLine."Qty. Shipped", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual("Order Status"::"Partial", GlobalSalesLine."Order Status", GlobalValueShouldBeMatched);
             until (WarehouseShipmentLine.Next() = 0) and (GlobalSalesLine.Next() = 0);
+    end;
+
+    local procedure CheckSalesOrderFullyPosted()
+    var
+        SalesShipmentHeader: Record "Sales Shipment Header";
+        SalesShipmentLine: Record "Sales Shipment Line";
+        WarehouseShipmentLine: Record "Warehouse Shipment Line";
+    begin
+        WarehouseShipmentLine.SetRange("Source No.", GlobalSalesHeader."No.");
+        GlobalSalesLine.SetRange("Document No.", GlobalSalesHeader."No.");
+        GlobalAssert.RecordIsEmpty(WarehouseShipmentLine);
+
+        SalesShipmentHeader.SetRange("Order No.", GlobalSalesHeader."No.");
+        GlobalAssert.RecordCount(SalesShipmentHeader, 1);
+        SalesShipmentHeader.FindFirst();
+        SalesShipmentLine.SetRange("Document No.", SalesShipmentHeader."No.");
+        if GlobalSalesLine.FindSet() and SalesShipmentLine.FindSet() then
+            repeat
+                GlobalAssert.AreEqual(GlobalSalesLine."No.", SalesShipmentLine."No.", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalSalesLine."Location Code", SalesShipmentLine."Location Code", GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual(GlobalSalesLine.Quantity, SalesShipmentLine.Quantity, GlobalValueShouldBeMatched);
+                GlobalAssert.AreEqual("Order Status"::"Completed", GlobalSalesLine."Order Status", GlobalValueShouldBeMatched);
+            until (GlobalSalesLine.Next() = 0) and (SalesShipmentLine.Next() = 0);
     end;
 
     local procedure CheckSetupDataAvailable()
     begin
-        GlobalAssert.IsFalse(GlobalLocation.IsEmpty(), GlobalValueShouldNotbeEmpty);
-        GlobalAssert.IsFalse(GlobalVendor.IsEmpty(), GlobalValueShouldNotbeEmpty);
-        GlobalAssert.IsFalse(GlobalCustomer.IsEmpty(), GlobalValueShouldNotbeEmpty);
-
-        GlobalAssert.RecordCount(GlobalItem, 3);
+        GlobalAssert.RecordIsNotEmpty(GlobalLocation);
+        GlobalAssert.RecordIsNotEmpty(GlobalVendor);
+        GlobalAssert.RecordIsNotEmpty(GlobalCustomer);
+        GlobalAssert.RecordCount(GlobalItem, 2);
     end;
 
     local procedure CreateGenPostingSetup(GenBusPostingGroup: Code[20]; GenProdPostingGroup: Code[20])
@@ -305,84 +418,126 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         InventoryPostingSetup.Modify();
     end;
 
-    local procedure CreatePurchaseOrderAndCreateWhseReceiptAndPost(PostFully: Boolean)
+    local procedure CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(CaseNo: Integer)
     var
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryWarehouse: Codeunit "Library - Warehouse";
         OrderStatusManagement: Codeunit OrderStatusManagement;
     begin
-        LibraryPurchase.CreatePurchHeader(GlobalPurchaseHeader, "Purchase Document Type"::Order, GlobalVendor."No.");
-        if GlobalItem.FindSet() then
-            repeat
-                LibraryPurchase.CreatePurchaseLine(GlobalPurchaseLine, GlobalPurchaseHeader, "Sales Line Type"::Item, GlobalItem."No.", 10);
-            until GlobalItem.Next() = 0;
+        case CaseNo of
+            1:
+                GlobalPurchaseHeader.SetRange("Posting Description", 'TEST_PO_P');
+            2:
+                GlobalPurchaseHeader.SetRange("Posting Description", 'TEST_PO_F');
+            3:
+                GlobalPurchaseHeader.SetRange("Posting Description", 'TEST_PO_M');
+        end;
 
-        CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
-        CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
+        if not GlobalPurchaseHeader.IsEmpty() then
+            exit;
+
+        LibraryPurchase.CreatePurchHeader(GlobalPurchaseHeader, "Purchase Document Type"::Order, GlobalVendor."No.");
+
+        case CaseNo of
+            1:
+                GlobalPurchaseHeader."Posting Description" := 'TEST_PO_P';
+            2:
+                GlobalPurchaseHeader."Posting Description" := 'TEST_PO_F';
+            3:
+                GlobalPurchaseHeader."Posting Description" := 'TEST_PO_M';
+        end;
+
         if GlobalItem.FindSet() then
             repeat
-                CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
+                LibraryPurchase.CreatePurchaseLine(GlobalPurchaseLine, GlobalPurchaseHeader, "Sales Line Type"::Item, GlobalItem."No.", 10.00);
             until GlobalItem.Next() = 0;
 
         LibraryPurchase.ReleasePurchaseDocument(GlobalPurchaseHeader);
-
         LibraryWarehouse.CreateWhseReceiptFromPO(GlobalPurchaseHeader);
 
-        GlobalWarehouseReceiptHeader.SetRange("Location Code", GlobalPurchaseHeader."Location Code");
         GlobalWarehouseReceiptLine.SetRange("Source No.", GlobalPurchaseHeader."No.");
-        if not PostFully then begin
-            if GlobalWarehouseReceiptLine.FindSet() then
-                repeat
-                    GlobalWarehouseReceiptLine."Qty. to Receive" := Round(GlobalWarehouseReceiptLine.Quantity / 2, 0.1, '=');
+
+        case CaseNo of
+            1:
+                if GlobalWarehouseReceiptLine.FindSet() then
+                    repeat
+                        GlobalWarehouseReceiptLine.Validate("Qty. to Receive", Round(GlobalWarehouseReceiptLine.Quantity / 2, 0.1, '='));
+                        GlobalWarehouseReceiptLine.Modify(true);
+                    until GlobalWarehouseReceiptLine.Next() = 0;
+            2:
+                GlobalWarehouseReceiptLine.FindFirst();
+            3:
+                if GlobalWarehouseReceiptLine.FindFirst() then begin
+                    GlobalWarehouseReceiptLine.Validate("Qty. to Receive", Round(GlobalWarehouseReceiptLine.Quantity / 2, 0.1, '='));
                     GlobalWarehouseReceiptLine.Modify(true);
-                until GlobalWarehouseReceiptLine.Next() = 0;
+                end;
         end;
-        GlobalWarehouseReceiptLine.FindFirst();
+
+        GlobalWarehouseReceiptHeader.SetRange("Location Code", GlobalPurchaseHeader."Location Code");
         GlobalWarehouseReceiptHeader.SetRange("No.", GlobalWarehouseReceiptLine."No.");
         GlobalWarehouseReceiptHeader.FindFirst();
         LibraryWarehouse.PostWhseReceipt(GlobalWarehouseReceiptHeader);
-        OrderStatusManagement.UpdatePurchaseLineStatus(GlobalWarehouseReceiptLine);
     end;
 
-    local procedure CreateSalesOrderAndWhseShipmentAndPost(FullyPost: Boolean)
+    local procedure CreateSalesOrderAndWarehouseShipmentAndPost(CaseNo: Integer)
     var
         LibrarySales: Codeunit "Library - Sales";
         LibraryWarehouse: Codeunit "Library - Warehouse";
         OrderStatusManagement: Codeunit OrderStatusManagement;
     begin
-        LibrarySales.CreateSalesHeader(GlobalSalesHeader, "Sales Document Type"::Order, GlobalCustomer."No.");
-        if GlobalItem.FindSet() then
-            repeat
-                LibrarySales.CreateSalesLine(GlobalSalesLine, GlobalSalesHeader, "Sales Line Type"::Item, GlobalItem."No.", 10);
-                GlobalSalesLine."Location Code" := GlobalLocation.Code;
-                GlobalSalesLine.Modify(true);
-            until GlobalItem.Next() = 0;
+        case CaseNo of
+            1:
+                GlobalSalesHeader.SetRange("Posting Description", 'TEST_SO_P');
+            2:
+                GlobalSalesHeader.SetRange("Posting Description", 'TEST_SO_F');
+            3:
+                GlobalSalesHeader.SetRange("Posting Description", 'TEST_SO_M');
+        end;
 
-        CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
-        CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
+        if not GlobalSalesHeader.IsEmpty() then
+            exit;
+
+        LibrarySales.CreateSalesHeader(GlobalSalesHeader, "Sales Document Type"::Order, GlobalCustomer."No.");
+
+        case CaseNo of
+            1:
+                GlobalSalesHeader."Posting Description" := 'TEST_SO_P';
+            2:
+                GlobalSalesHeader."Posting Description" := 'TEST_SO_F';
+            3:
+                GlobalSalesHeader."Posting Description" := 'TEST_SO_M';
+        end;
+
         if GlobalItem.FindSet() then
             repeat
-                CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
+                LibrarySales.CreateSalesLine(GlobalSalesLine, GlobalSalesHeader, "Sales Line Type"::Item, GlobalItem."No.", 10.00);
             until GlobalItem.Next() = 0;
 
         LibrarySales.ReleaseSalesDocument(GlobalSalesHeader);
-
         LibraryWarehouse.CreateWhseShipmentFromSO(GlobalSalesHeader);
 
-        GlobalWarehouseShipmentHeader.SetRange("Location Code", GlobalSalesHeader."Location Code");
         GlobalWarehouseShipmentLine.SetRange("Source No.", GlobalSalesHeader."No.");
-        if not FullyPost then begin
-            if GlobalWarehouseShipmentLine.FindSet() then
-                repeat
-                    GlobalWarehouseShipmentLine."Qty. to Ship" := Round(GlobalWarehouseShipmentLine.Quantity / 2, 0.1, '=');
+
+        case CaseNo of
+            1:
+                if GlobalWarehouseShipmentLine.FindSet() then
+                    repeat
+                        GlobalWarehouseShipmentLine.Validate("Qty. to Ship", Round(GlobalWarehouseShipmentLine.Quantity / 2, 0.1, '='));
+                        GlobalWarehouseShipmentLine.Modify(true);
+                    until GlobalWarehouseShipmentLine.Next() = 0;
+            2:
+                GlobalWarehouseShipmentLine.FindFirst();
+            3:
+                if GlobalWarehouseShipmentLine.FindFirst() then begin
+                    GlobalWarehouseShipmentLine.Validate("Qty. to Ship", Round(GlobalWarehouseShipmentLine.Quantity / 2, 0.1, '='));
                     GlobalWarehouseShipmentLine.Modify(true);
-                until GlobalWarehouseShipmentLine.Next() = 0;
+                end;
         end;
-        GlobalWarehouseShipmentLine.FindFirst();
+
+        GlobalWarehouseShipmentHeader.SetRange("Location Code", GlobalSalesHeader."Location Code");
         GlobalWarehouseShipmentHeader.SetRange("No.", GlobalWarehouseShipmentLine."No.");
         GlobalWarehouseShipmentHeader.FindFirst();
         LibraryWarehouse.PostWhseShipment(GlobalWarehouseShipmentHeader, false);
-        OrderStatusManagement.UpdateSalesLineStatus(GlobalWarehouseShipmentLine);
     end;
 
     local procedure CreateSetupDataforPurchaseOrderAndSalesOrder()
@@ -394,36 +549,30 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         LibraryPurchase: Codeunit "Library - Purchase";
         LibrarySales: Codeunit "Library - Sales";
         LibraryWarehouse: Codeunit "Library - Warehouse";
-        ItemCount: Integer;
+        Number: Integer;
     begin
-        GlobalLocation.SetRange("Require Receive", true);
-        GlobalLocation.SetRange("Require Shipment", true);
-        GlobalLocation.SetRange("Require Put-away", false);
-        GlobalLocation.SetRange("Require Pick", false);
-        GlobalLocation.SetRange("Bin Mandatory", false);
+        GlobalItem.SetFilter(Description, 'TEST_ITEM*');
+        if not GlobalItem.IsEmpty() then
+            exit;
+
+        GlobalLocation.SetRange(Name, 'TEST');
         if not GlobalLocation.FindFirst() then begin
             LibraryWarehouse.CreateLocation(GlobalLocation);
-            GlobalLocation."Require Receive" := true;
-            GlobalLocation."Require Shipment" := true;
+            GlobalLocation.Validate(Name, 'TEST');
+            GlobalLocation.Validate("Require Receive", true);
+            GlobalLocation.Validate("Require Shipment", true);
             GlobalLocation.Modify(true);
-
-            CreateSetupDataforPurchaseOrderAndSalesOrder();
         end;
 
         WarehouseEmployee.SetRange("Location Code", GlobalLocation.Code);
-        if not WarehouseEmployee.FindFirst() then begin
+        if WarehouseEmployee.IsEmpty() then
             LibraryWarehouse.CreateWarehouseEmployee(WarehouseEmployee, GlobalLocation.Code, false);
-
-            CreateSetupDataforPurchaseOrderAndSalesOrder();
-        end;
 
         GlobalVendor.SetRange("Location Code", GlobalLocation.Code);
         if not GlobalVendor.FindFirst() then begin
             LibraryPurchase.CreateVendor(GlobalVendor);
             GlobalVendor."Location Code" := GlobalLocation.Code;
             GlobalVendor.Modify(true);
-
-            CreateSetupDataforPurchaseOrderAndSalesOrder();
         end;
 
         GlobalCustomer.SetRange("Location Code", GlobalLocation.Code);
@@ -431,65 +580,55 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
             LibrarySales.CreateCustomer(GlobalCustomer);
             GlobalCustomer."Location Code" := GlobalLocation.Code;
             GlobalCustomer.Modify(true);
-
-            CreateSetupDataforPurchaseOrderAndSalesOrder();
         end;
 
-        ItemLedgerEntry.SetRange("Location Code", GlobalLocation.Code);
-        if ItemLedgerEntry.Count() < 3 then begin
-            for ItemCount := 1 to 3 do begin
+        for Number := 1 to 2 do begin
+            GlobalItem.SetFilter(Description, 'TEST_ITEM' + Format(Number));
+            if not GlobalItem.FindFirst() then begin
                 LibraryInventory.CreateItem(GlobalItem);
+                GlobalItem.Validate(Description, 'TEST_ITEM' + Format(Number));
+                GlobalItem.Modify();
+            end;
+
+            if GlobalItem.Inventory = 0.00 then
                 LibraryInventory.CreateItemJnlLine(ItemJournalLine,
                                                 ItemJournalLine."Entry Type"::"Positive Adjmt.",
                                                 WorkDate(),
                                                 GlobalItem."No.",
-                                                30,
+                                                30.00,
                                                 GlobalLocation.Code);
 
-
-                CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
-
-                LibraryInventory.PostItemJournalLine(ItemJournalLine."Journal Template Name", ItemJournalLine."Journal Batch Name");
-            end;
-
-            CreateSetupDataforPurchaseOrderAndSalesOrder();
+            CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
+            CheckInsertVATPostingSetup(GlobalVendor."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
+            CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
+            CreateGenPostingSetup(GlobalVendor."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
+            CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
+            LibraryInventory.PostItemJournalLine(ItemJournalLine."Journal Template Name", ItemJournalLine."Journal Batch Name");
         end;
 
-        // Choose 3 items of item ledger entries in the location to global item record
-        ItemLedgerEntry.SetRange("Location Code", GlobalLocation.Code);
-        ItemCount := 0;
-        if ItemLedgerEntry.FindSet() then //TODO: Improve logic to select distinct items
-            repeat
-                if GlobalItem.Get(ItemLedgerEntry."Item No.") then begin
-                    if not GlobalItem.Mark() then begin
-                        GlobalItem.Mark(true);
-                        ItemCount += 1;
-                        if ItemCount >= 3 then
-                            break;
-                    end;
-                end;
-            until ItemLedgerEntry.Next() = 0;
-        GlobalItem.MarkedOnly(true);
-        GlobalIsHandled := true;
+        GlobalItem.SetFilter(Description, 'TEST_ITEM*');
+    end;
+
+    local procedure GetPartialliFullyAndMultiPostedSalesOrder()
+    begin
+        GlobalSalesHeader.SetRange("Document Type", GlobalSalesHeader."Document Type"::Order);
+        GlobalSalesHeader.SetRange(Status, GlobalSalesHeader.Status::Released);
+        GlobalSalesHeader.SetRange("Location Code", GlobalLocation.Code);
+        GlobalSalesHeader.SetRange("Sell-to Customer No.", GlobalCustomer."No.");
+        GlobalSalesHeader.SetFilter("Posting Description", 'TEST_SO_*');
+    end;
+
+    local procedure GetPartiallyFullyAndMultiPostedPurchaseOrder()
+    begin
+        GlobalPurchaseHeader.SetRange("Document Type", GlobalPurchaseHeader."Document Type"::Order);
+        GlobalPurchaseHeader.SetRange(Status, GlobalPurchaseHeader.Status::Released);
+        GlobalPurchaseHeader.SetRange("Location Code", GlobalLocation.Code);
+        GlobalPurchaseHeader.SetRange("Pay-to Vendor No.", GlobalVendor."No.");
+        GlobalPurchaseHeader.SetFilter("Posting Description", 'TEST_PO_*');
     end;
 
     local procedure Initialize()
     begin
         // Initialization code for tests
-
-    end;
-
-    local procedure SetupDataforPurchOrder()
-    begin
-        // Setup data for purchase order tests
-        if not GlobalIsHandled then
-            CreateSetupDataforPurchaseOrderAndSalesOrder();
-    end;
-
-    local procedure SetupDataforSalesOrder()
-    begin
-        // Setup data for sales order tests
-        if not GlobalIsHandled then
-            CreateSetupDataforPurchaseOrderAndSalesOrder();
     end;
 }

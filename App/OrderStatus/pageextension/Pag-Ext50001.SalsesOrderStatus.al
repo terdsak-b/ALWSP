@@ -8,7 +8,7 @@ pageextension 50001 SalsesOrderStatus extends "Sales Order Subform"
     {
         addbefore("Location Code")
         {
-            field(Status; Rec.Status)
+            field("Status"; Rec."Order Status")
             {
                 Caption = 'Status';
                 ApplicationArea = All;
