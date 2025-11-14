@@ -461,14 +461,14 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
             1:
                 if GlobalWarehouseReceiptLine.FindSet() then
                     repeat
-                        GlobalWarehouseReceiptLine.Validate("Qty. to Receive", Round(GlobalWarehouseReceiptLine.Quantity / 2, 0.1, '='));
+                        GlobalWarehouseReceiptLine.Validate("Qty. to Receive", Round(GlobalWarehouseReceiptLine.Quantity / 2.00, 0.1, '='));
                         GlobalWarehouseReceiptLine.Modify(true);
                     until GlobalWarehouseReceiptLine.Next() = 0;
             2:
                 GlobalWarehouseReceiptLine.FindFirst();
             3:
                 if GlobalWarehouseReceiptLine.FindFirst() then begin
-                    GlobalWarehouseReceiptLine.Validate("Qty. to Receive", Round(GlobalWarehouseReceiptLine.Quantity / 2, 0.1, '='));
+                    GlobalWarehouseReceiptLine.Validate("Qty. to Receive", Round(GlobalWarehouseReceiptLine.Quantity / 2.00, 0.1, '='));
                     GlobalWarehouseReceiptLine.Modify(true);
                 end;
         end;
@@ -521,14 +521,14 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
             1:
                 if GlobalWarehouseShipmentLine.FindSet() then
                     repeat
-                        GlobalWarehouseShipmentLine.Validate("Qty. to Ship", Round(GlobalWarehouseShipmentLine.Quantity / 2, 0.1, '='));
+                        GlobalWarehouseShipmentLine.Validate("Qty. to Ship", Round(GlobalWarehouseShipmentLine.Quantity / 2.00, 0.1, '='));
                         GlobalWarehouseShipmentLine.Modify(true);
                     until GlobalWarehouseShipmentLine.Next() = 0;
             2:
                 GlobalWarehouseShipmentLine.FindFirst();
             3:
                 if GlobalWarehouseShipmentLine.FindFirst() then begin
-                    GlobalWarehouseShipmentLine.Validate("Qty. to Ship", Round(GlobalWarehouseShipmentLine.Quantity / 2, 0.1, '='));
+                    GlobalWarehouseShipmentLine.Validate("Qty. to Ship", Round(GlobalWarehouseShipmentLine.Quantity / 2.00, 0.1, '='));
                     GlobalWarehouseShipmentLine.Modify(true);
                 end;
         end;

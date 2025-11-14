@@ -1,12 +1,12 @@
-codeunit 50103 "Inventory by Location Testing"
+codeunit 50103 "Inv. by Loct. Factbox Testing"
 {
     Subtype = Test;
 
     [Test]
-    procedure TestInventoryByLocation()
-    var
-
+    procedure "01"()
     begin
-
+        // [GIVEN] Create item has location entries separately 
+        // [WHEN]  
+        // [THEN] Then Expected Output 
     end;
 }

@@ -53,7 +53,7 @@ page 50002 "Assembly Order Items"
 
                     trigger OnValidate()
                     begin
-                        if GlobalQty <= 0 then
+                        if GlobalQty <= 0.00 then
                             Error('Production Quantity cannot be less than 0.');
                         GlobalQtyDict.Set(Rec."No.", GlobalQty);
                     end;
@@ -119,7 +119,7 @@ page 50002 "Assembly Order Items"
             repeat
                 //Set Production Quantity default to 1 when open page
                 if not GlobalQtyDict.ContainsKey(Rec."No.") then begin
-                    if GlobalQty <> 1 then
+                    if GlobalQty <> 1.00 then
                         GlobalQty := 1.00;
                     GlobalQtyDict.Add(Rec."No.", GlobalQty);
                 end;

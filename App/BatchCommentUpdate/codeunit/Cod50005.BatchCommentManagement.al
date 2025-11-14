@@ -132,6 +132,7 @@ codeunit 50005 "Batch Comment Management"
                     BatchCommentUpdateBuffer."Transfer Comment" := Customer."Transfer Comment";
                     BatchCommentUpdateBuffer.Modify(true);
                 end;
+
                 BatchCommentUpdateBuffer.Reset();
             until Customer.Next() = 0;
     end;
@@ -159,6 +160,7 @@ codeunit 50005 "Batch Comment Management"
                     Clear(BatchCommentUpdateBuffer."New Comment");
                     BatchCommentUpdateBuffer.Modify(true);
                 end;
+
             until Customer.Next() = 0;
 
         // Load Vendors with ESD comments
@@ -176,6 +178,7 @@ codeunit 50005 "Batch Comment Management"
                     Clear(BatchCommentUpdateBuffer."New Comment");
                     BatchCommentUpdateBuffer.Modify(true);
                 end;
+
             until Vendor.Next() = 0;
     end;
 
@@ -202,6 +205,7 @@ codeunit 50005 "Batch Comment Management"
                     BatchCommentUpdateBuffer."Transfer Comment" := Vendor."Transfer Comment";
                     BatchCommentUpdateBuffer.Modify(true);
                 end;
+
                 BatchCommentUpdateBuffer.Reset();
             until Vendor.Next() = 0;
     end;

@@ -347,19 +347,19 @@ codeunit 50002 "Manufacturing Process Testing"
     begin
         // Filter items for testing, Protect item for when global item is used in other tests
         LocalItem.Init();
-        LocalItem.SetRange(Type, LocalItem.Type::Inventory);
-        LocalItem.SetRange("Replenishment System", LocalItem."Replenishment System"::"Prod. Order");
-        LocalItem.SetRange("Manufacturing Policy", LocalItem."Manufacturing Policy"::"Make-to-Order");
+        LocalItem.SetRange(Type, Microsoft.Inventory.Item."Item Type"::Inventory);
+        LocalItem.SetRange("Replenishment System", "Replenishment System"::"Prod. Order");
+        LocalItem.SetRange("Manufacturing Policy", Microsoft.Manufacturing.Setup."Manufacturing Policy"::"Make-to-Order");
         LocalItem.SetFilter("Routing No.", '<>%1', '');
         LocalItem.SetFilter("Production BOM No.", '<>%1', '');
-        LocalItem.SetRange("Reordering Policy", LocalItem."Reordering Policy"::Order);
+        LocalItem.SetRange("Reordering Policy", Microsoft.Inventory.Item."Reordering Policy"::Order);
         GlobalItem.Init();
-        GlobalItem.SetRange(Type, GlobalItem.Type::Inventory);
-        GlobalItem.SetRange("Replenishment System", GlobalItem."Replenishment System"::"Prod. Order");
-        GlobalItem.SetRange("Manufacturing Policy", GlobalItem."Manufacturing Policy"::"Make-to-Order");
+        GlobalItem.SetRange(Type, Microsoft.Inventory.Item."Item Type"::Inventory);
+        GlobalItem.SetRange("Replenishment System", Microsoft.Inventory.Item."Replenishment System"::"Prod. Order");
+        GlobalItem.SetRange("Manufacturing Policy", Microsoft.Manufacturing.Setup."Manufacturing Policy"::"Make-to-Order");
         GlobalItem.SetFilter("Routing No.", '<>%1', '');
         GlobalItem.SetFilter("Production BOM No.", '<>%1', '');
-        GlobalItem.SetRange("Reordering Policy", GlobalItem."Reordering Policy"::Order);
+        GlobalItem.SetRange("Reordering Policy", Microsoft.Inventory.Item."Reordering Policy"::Order);
 
         GlobalItemTemp.DeleteAll();
         GlobalItemTemp.Reset();

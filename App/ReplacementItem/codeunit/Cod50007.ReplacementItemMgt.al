@@ -25,6 +25,7 @@ codeunit 50007 ReplacementItemMgt
                                 until SalesLine.Next() = 0;
                     SalesHeader.Modify(true);
                 end;
+
             until SalesLine.Next() = 0;
     end;
 

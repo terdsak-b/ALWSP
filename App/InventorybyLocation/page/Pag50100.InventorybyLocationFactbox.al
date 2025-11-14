@@ -43,7 +43,7 @@ page 50100 "Inventory by Location"
     procedure CalculateInventoryQuantity()
     var
         LocationCode: Code[20];
-        RemainingQty: Decimal;
+        FactboxQty: Decimal;
         ItemLedgerEntry: Record "Item Ledger Entry";
         EntryNo: Integer;
     begin
@@ -58,16 +58,17 @@ page 50100 "Inventory by Location"
         ItemLedgerEntry.SetRange("Item No.", GlobalItemNo);
         ItemLedgerEntry.SetRange("Location Code", GlobalLocationCode);
 
-        RemainingQty := 0;
+        FactboxQty := 0;
         ItemLedgerEntry.CalcSums(Quantity);
-        RemainingQty := ItemLedgerEntry.Quantity;
+        FactboxQty := ItemLedgerEntry.Quantity;
 
         Rec.Init();
         Rec."Entry No." := EntryNo;
         Rec."Item No." := GlobalItemNo;
         Rec."Location Code" := GlobalLocationCode;
-        Rec.Quantity := RemainingQty;
         Rec.Insert();
+        Rec.Validate("Quantity", FactboxQty);
+        Rec.Modify()
     end;
 
     local procedure ShowDetails()
