@@ -423,7 +423,6 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
     var
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryWarehouse: Codeunit "Library - Warehouse";
-        OrderStatusManagement: Codeunit OrderStatusManagement;
     begin
         case CaseNo of
             1:
@@ -484,7 +483,6 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
     var
         LibrarySales: Codeunit "Library - Sales";
         LibraryWarehouse: Codeunit "Library - Warehouse";
-        OrderStatusManagement: Codeunit OrderStatusManagement;
     begin
         case CaseNo of
             1:

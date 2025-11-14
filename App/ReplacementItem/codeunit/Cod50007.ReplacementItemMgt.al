@@ -6,12 +6,6 @@ using Microsoft.Inventory.Ledger;
 
 codeunit 50007 ReplacementItemMgt
 {
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post (Yes/No)", OnAfterConfirmPost, '', false, false)]
-    local procedure ReplaceItem(var SalesHeader: Record "Sales Header"; Ishandled: Boolean)
-    begin
-        ReplaceItemsInSalesOrder(SalesHeader);
-    end;
-
     procedure ReplaceItemsInSalesOrder(var SalesHeader: Record "Sales Header")
     var
         SalesLine: Record "Sales Line";
@@ -38,5 +32,11 @@ codeunit 50007 ReplacementItemMgt
                     SalesHeader.Modify(true);
                 end;
             until SalesLine.Next() = 0;
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", OnBeforePostSalesDoc, '', false, false)]
+    local procedure OnBeforePostSalesDoc(var Sender: Codeunit "Sales-Post"; var SalesHeader: Record "Sales Header"; CommitIsSuppressed: Boolean; PreviewMode: Boolean; var HideProgressWindow: Boolean; var IsHandled: Boolean; var CalledBy: Integer)
+    begin
+        ReplaceItemsInSalesOrder(SalesHeader);
     end;
 }

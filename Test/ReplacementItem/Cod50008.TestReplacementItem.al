@@ -133,9 +133,7 @@ codeunit 50008 "Test Replacement Item"
     local procedure PostingSaleOrderAndConfirmingReplacement()
     var
         ShippmentNo: Code[20];
-        ReplacementItemMgt: Codeunit "ReplacementItemMgt";
     begin
-        ReplacementItemMgt.ReplaceItemsInSalesOrder(GlobalSalesHeader);
         ShippmentNo := GlobalLibrarySales.PostSalesDocument(GlobalSalesHeader, true, false);
         GlobalSalesShipmentHeader.Get(ShippmentNo);
     end;
@@ -227,6 +225,7 @@ codeunit 50008 "Test Replacement Item"
     local procedure CreateItemMainAndReplacementItemWithStock()
     var
         ItemJnlLine: Record "Item Journal Line";
+        LibrarySales: Codeunit "Library - Sales";
         MainItemPrefix: Code[10];
         ReplacementItemPrefix: Code[10];
     begin
@@ -238,15 +237,20 @@ codeunit 50008 "Test Replacement Item"
 
         GlobalItem.Validate("Replacement Item", GlobalReplacementItemCode);
         GlobalItem.Modify();
+
+        if not GlobalCustomer.FindFirst() then
+            LibrarySales.CreateCustomer(GlobalCustomer);
         if GlobalItem.Get(GlobalReplacementItemCode) then begin
             GlobalLibraryInventory.CreateItemJnlLine(ItemJnlLine,
                                                 ItemJnlLine."Entry Type"::"Positive Adjmt.",
                                                 WorkDate(),
-                                                GlobalReplacementItemCode,
+                                                GlobalItem."No.",
                                                 10,
                                                 '');
 
-            CreateInventoryPostingSetup('', ItemJnlLine."Inventory Posting Group");
+            CreateInventoryPostingSetup('', GlobalItem."Inventory Posting Group");
+            CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
+            CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
 
             GlobalLibraryInventory.PostItemJournalLine(ItemJnlLine."Journal Template Name", ItemJnlLine."Journal Batch Name");
         end;
@@ -280,10 +284,6 @@ codeunit 50008 "Test Replacement Item"
     begin
         GlobalCustomer.FindFirst();
         GlobalItem.Get(GlobalReplacementItemCode);
-
-        CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
-        CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
-        CreateInventoryPostingSetup('', GlobalItem."Inventory Posting Group");
 
         GlobalLibrarySales.CreateSalesHeader(GlobalSalesHeader, "Sales Document Type"::Order, GlobalCustomer."No.");
         GlobalLibrarySales.CreateSalesLine(GlobalSalesLine, GlobalSalesHeader, "Sales Line Type"::Item, GlobalMainItemCode, 10);
