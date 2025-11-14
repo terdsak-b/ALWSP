@@ -16,6 +16,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         GlobalWarehouseShipmentHeader: Record "Warehouse Shipment Header";
         GlobalWarehouseShipmentLine: Record "Warehouse Shipment Line";
         GlobalAssert: Codeunit "Assert";
+        GlobalIsHandle: Boolean;
         GlobalValueShouldBeMatched: Label 'Values should be matched';
 
     [Test]
@@ -39,7 +40,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
         // [GIVEN] location setup with controlled location enabled and vendor with location receiving setup
         //         and setup item with a quantity on hand in the controlled location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] A purchase order is created with a specific location and create warehouse receipt and partially posted
         CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(1);
@@ -56,7 +57,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
         // [GIVEN] location setup with controlled location enabled and customer with location shipping setup
         //         and setup item with a quantity on hand in the controlled location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] A sales order is created with a specific location and partially posted
         CreateSalesOrderAndWarehouseShipmentAndPost(1);
@@ -73,7 +74,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
         // [GIVEN] location setup with controlled location enabled and vendor with location receiving setup
         //         and setup item with a quantity on hand in the controlled location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] A purchase order is created with a specific location and fully posted
         CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(2);
@@ -90,7 +91,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
         // [GIVEN] location setup with controlled location enabled and customer with location shipping setup
         //         and setup item with a quantity on hand in the controlled location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] A sales order is created with a specific location and fully posted
         CreateSalesOrderAndWarehouseShipmentAndPost(2);
@@ -107,7 +108,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
         // [GIVEN] location setup with controlled location enabled and vendor with location receiving setup
         //         and setup item with a quantity on hand in the controlled location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] The order is multi posted
         CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(3);
@@ -124,7 +125,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
         // [GIVEN] location setup with controlled location enabled and customer with location shipping setup
         //         and setup item with a quantity on hand in the controlled location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] The order is multi posted
         CreateSalesOrderAndWarehouseShipmentAndPost(3);
@@ -140,7 +141,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         Initialize();
 
         // [GIVEN] A purchase order is partially, fully and multi posted with a specific location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] The order status is checked
         GetPartiallyFullyAndMultiPostedPurchaseOrder();
@@ -156,7 +157,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         Initialize();
 
         // [GIVEN] A sales order is partially, fully and multi posted with a specific location
-        CreateSetupDataforPurchaseOrderAndSalesOrder();
+        SetupData();
 
         // [WHEN] The order status is checked
         GetPartialliFullyAndMultiPostedSalesOrder();
@@ -277,11 +278,11 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
     local procedure CheckSalesOrder()
     var
-        CaseCount: Integer;
+        Number: Integer;
     begin
         if GlobalSalesHeader.IsEmpty() then
-            for CaseCount := 1 to 3 do
-                CreateSalesOrderAndWarehouseShipmentAndPost(CaseCount);
+            for Number := 1 to 3 do
+                CreateSalesOrderAndWarehouseShipmentAndPost(Number);
         if GlobalSalesHeader.FindSet() then
             repeat
                 case true of
@@ -551,10 +552,6 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         LibraryWarehouse: Codeunit "Library - Warehouse";
         Number: Integer;
     begin
-        GlobalItem.SetFilter(Description, 'TEST_ITEM*');
-        if not GlobalItem.IsEmpty() then
-            exit;
-
         GlobalLocation.SetRange(Name, 'TEST');
         if not GlobalLocation.FindFirst() then begin
             LibraryWarehouse.CreateLocation(GlobalLocation);
@@ -590,7 +587,10 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
                 GlobalItem.Modify();
             end;
 
-            if GlobalItem.Inventory = 0.00 then
+            ItemLedgerEntry.SetRange("Item No.", GlobalItem."No.");
+            ItemLedgerEntry.SetRange("Location Code", GlobalLocation.Code);
+            ItemLedgerEntry.CalcSums(Quantity);
+            if ItemLedgerEntry.Quantity = 0.00 then begin
                 LibraryInventory.CreateItemJnlLine(ItemJournalLine,
                                                 ItemJournalLine."Entry Type"::"Positive Adjmt.",
                                                 WorkDate(),
@@ -598,15 +598,18 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
                                                 30.00,
                                                 GlobalLocation.Code);
 
-            CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
-            CheckInsertVATPostingSetup(GlobalVendor."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
-            CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
-            CreateGenPostingSetup(GlobalVendor."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
-            CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
-            LibraryInventory.PostItemJournalLine(ItemJournalLine."Journal Template Name", ItemJournalLine."Journal Batch Name");
+                CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
+                CheckInsertVATPostingSetup(GlobalVendor."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
+                CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
+                CreateGenPostingSetup(GlobalVendor."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
+                CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
+                LibraryInventory.PostItemJournalLine(ItemJournalLine."Journal Template Name", ItemJournalLine."Journal Batch Name");
+            end;
+
         end;
 
         GlobalItem.SetFilter(Description, 'TEST_ITEM*');
+        GlobalIsHandle := true;
     end;
 
     local procedure GetPartialliFullyAndMultiPostedSalesOrder()
@@ -630,5 +633,11 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
     local procedure Initialize()
     begin
         // Initialization code for tests
+    end;
+
+    local procedure SetupData()
+    begin
+        if not GlobalIsHandle then
+            CreateSetupDataforPurchaseOrderAndSalesOrder();
     end;
 }
