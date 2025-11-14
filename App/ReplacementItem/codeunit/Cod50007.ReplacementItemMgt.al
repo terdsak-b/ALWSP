@@ -1,9 +1,3 @@
-namespace ALWSP.ALWSP;
-using Microsoft.Sales.Posting;
-using Microsoft.Sales.Document;
-using Microsoft.Inventory.Item;
-using Microsoft.Inventory.Ledger;
-
 codeunit 50007 ReplacementItemMgt
 {
     procedure ReplaceItemsInSalesOrder(var SalesHeader: Record "Sales Header")

@@ -97,7 +97,7 @@ codeunit 50006 "Batch Comment Update Test"
                 until Vendor.Next() = 0;
         end;
 
-        GlobalESDCommentMsg := 'Update Comment: ' + LibraryRandom.RandText(84);
+        GlobalESDCommentMsg := 'Update Comment: ' + LibraryRandom.RandText(10);
 
         if CreateComments then begin
             // Create ESD comments for customers and vendors

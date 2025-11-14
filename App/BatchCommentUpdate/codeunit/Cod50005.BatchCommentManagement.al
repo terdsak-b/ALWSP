@@ -27,15 +27,15 @@ codeunit 50005 "Batch Comment Management"
         if not ConfirmManagement.GetResponseOrDefault(ConfirmMsg, false) then
             exit;
 
-        if BatchCommentUpdateBuffer.FindSet() or BatchCommentUpdateBuffer.IsTemporary then
+        if BatchCommentUpdateBuffer.FindSet() then
             repeat
                 case BatchCommentUpdateBuffer."Entity Type" of
                     BatchCommentUpdateBuffer."Entity Type"::Customer:
                         begin
                             if Customer.Get(BatchCommentUpdateBuffer."Entity No.") then begin
                                 if BatchCommentUpdateBuffer."New Comment" <> '' then
-                                    Customer."ESD Comment" := BatchCommentUpdateBuffer."New Comment";
-                                Customer."Transfer Comment" := BatchCommentUpdateBuffer."Transfer Comment";
+                                    Customer.Validate("ESD Comment", BatchCommentUpdateBuffer."New Comment");
+                                Customer.Validate("Transfer Comment", BatchCommentUpdateBuffer."Transfer Comment");
                                 Customer.Modify(true);
                             end;
                         end;
@@ -43,12 +43,13 @@ codeunit 50005 "Batch Comment Management"
                         begin
                             if Vendor.Get(BatchCommentUpdateBuffer."Entity No.") then begin
                                 if BatchCommentUpdateBuffer."New Comment" <> '' then
-                                    Vendor."ESD Comment" := BatchCommentUpdateBuffer."New Comment";
-                                Vendor."Transfer Comment" := BatchCommentUpdateBuffer."Transfer Comment";
+                                    Vendor.Validate("ESD Comment", BatchCommentUpdateBuffer."New Comment");
+                                Vendor.Validate("Transfer Comment", BatchCommentUpdateBuffer."Transfer Comment");
                                 Vendor.Modify(true);
                             end;
                         end;
                 end;
+
             until BatchCommentUpdateBuffer.Next() = 0;
         LoadDefaultRecords(BatchCommentUpdateBuffer);
         Message(SuccessMsg);
@@ -87,8 +88,8 @@ codeunit 50005 "Batch Comment Management"
                     BatchCommentUpdateBuffer."Entity Type"::Customer:
                         begin
                             if Customer.Get(BatchCommentUpdateBuffer."Entity No.") then begin
-                                Customer."ESD Comment" := '';
-                                Customer."Transfer Comment" := false;
+                                Customer.Validate("ESD Comment", '');
+                                Customer.Validate("Transfer Comment", false);
                                 Customer.Modify(true);
                             end;
                         end;
@@ -96,8 +97,8 @@ codeunit 50005 "Batch Comment Management"
                         begin
                             if Vendor.Get(BatchCommentUpdateBuffer."Entity No.") then begin
 
-                                Vendor."ESD Comment" := '';
-                                Vendor."Transfer Comment" := false;
+                                Vendor.Validate("ESD Comment", '');
+                                Vendor.Validate("Transfer Comment", false);
                                 Vendor.Modify(true);
                             end;
                         end;
@@ -111,29 +112,25 @@ codeunit 50005 "Batch Comment Management"
     procedure LoadCustomers(var BatchCommentUpdateBuffer: Record "Batch Comment Update Buffer")
     var
         Customer: Record Customer;
-        EntryNo: Integer;
     begin
         if not BatchCommentUpdateBuffer.IsEmpty then
             BatchCommentUpdateBuffer.FindLast();
-
-        EntryNo := BatchCommentUpdateBuffer."Entry No.";
-
         if Customer.FindSet() then
             repeat
                 // Check if customer already exists in buffer
                 BatchCommentUpdateBuffer.SetRange("Entity Type", BatchCommentUpdateBuffer."Entity Type"::Customer);
                 BatchCommentUpdateBuffer.SetRange("Entity No.", Customer."No.");
                 if BatchCommentUpdateBuffer.IsEmpty then begin
-                    EntryNo += 1;
                     BatchCommentUpdateBuffer.Reset();
                     BatchCommentUpdateBuffer.Init();
-                    BatchCommentUpdateBuffer."Entry No." := EntryNo;
+                    BatchCommentUpdateBuffer."Entry No." += 1;
                     BatchCommentUpdateBuffer."Entity Type" := BatchCommentUpdateBuffer."Entity Type"::Customer;
                     BatchCommentUpdateBuffer."Entity No." := Customer."No.";
+                    BatchCommentUpdateBuffer.Insert(true);
                     BatchCommentUpdateBuffer."Entity Name" := Customer.Name;
                     BatchCommentUpdateBuffer."Old Comment" := Customer."ESD Comment";
                     BatchCommentUpdateBuffer."Transfer Comment" := Customer."Transfer Comment";
-                    BatchCommentUpdateBuffer.Insert();
+                    BatchCommentUpdateBuffer.Modify(true);
                 end;
                 BatchCommentUpdateBuffer.Reset();
             until Customer.Next() = 0;
@@ -152,13 +149,15 @@ codeunit 50005 "Batch Comment Management"
             repeat
                 if (Customer."ESD Comment" <> '') or Customer."Transfer Comment" then begin
                     BatchCommentUpdateBuffer.Init();
-                    BatchCommentUpdateBuffer."Entity Type" := BatchCommentUpdateBuffer."Entity Type"::Customer;
+                    BatchCommentUpdateBuffer."Entry No." += 1;
+                    BatchCommentUpdateBuffer."Entity Type" := "Comment Entity Type"::Customer;
                     BatchCommentUpdateBuffer."Entity No." := Customer."No.";
+                    BatchCommentUpdateBuffer.Insert(true);
                     BatchCommentUpdateBuffer."Entity Name" := Customer.Name;
                     BatchCommentUpdateBuffer."Old Comment" := Customer."ESD Comment";
                     BatchCommentUpdateBuffer."Transfer Comment" := Customer."Transfer Comment";
                     Clear(BatchCommentUpdateBuffer."New Comment");
-                    BatchCommentUpdateBuffer.Insert();
+                    BatchCommentUpdateBuffer.Modify(true);
                 end;
             until Customer.Next() = 0;
 
@@ -167,13 +166,15 @@ codeunit 50005 "Batch Comment Management"
             repeat
                 if (Vendor."ESD Comment" <> '') or Vendor."Transfer Comment" then begin
                     BatchCommentUpdateBuffer.Init();
-                    BatchCommentUpdateBuffer."Entity Type" := BatchCommentUpdateBuffer."Entity Type"::Vendor;
+                    BatchCommentUpdateBuffer."Entry No." += 1;
+                    BatchCommentUpdateBuffer."Entity Type" := "Comment Entity Type"::Vendor;
                     BatchCommentUpdateBuffer."Entity No." := Vendor."No.";
+                    BatchCommentUpdateBuffer.Insert(true);
                     BatchCommentUpdateBuffer."Entity Name" := Vendor.Name;
                     BatchCommentUpdateBuffer."Old Comment" := Vendor."ESD Comment";
                     BatchCommentUpdateBuffer."Transfer Comment" := Vendor."Transfer Comment";
                     Clear(BatchCommentUpdateBuffer."New Comment");
-                    BatchCommentUpdateBuffer.Insert();
+                    BatchCommentUpdateBuffer.Modify(true);
                 end;
             until Vendor.Next() = 0;
     end;
@@ -181,29 +182,25 @@ codeunit 50005 "Batch Comment Management"
     procedure LoadVendors(var BatchCommentUpdateBuffer: Record "Batch Comment Update Buffer")
     var
         Vendor: Record Vendor;
-        EntryNo: Integer;
     begin
         if not BatchCommentUpdateBuffer.IsEmpty then
             BatchCommentUpdateBuffer.FindLast();
-
-        EntryNo := BatchCommentUpdateBuffer."Entry No.";
-
         if Vendor.FindSet() then
             repeat
                 // Check if vendor already exists in buffer
                 BatchCommentUpdateBuffer.SetRange("Entity Type", BatchCommentUpdateBuffer."Entity Type"::Vendor);
                 BatchCommentUpdateBuffer.SetRange("Entity No.", Vendor."No.");
                 if BatchCommentUpdateBuffer.IsEmpty then begin
-                    EntryNo += 1;
                     BatchCommentUpdateBuffer.Reset();
                     BatchCommentUpdateBuffer.Init();
-                    BatchCommentUpdateBuffer."Entry No." := EntryNo;
+                    BatchCommentUpdateBuffer."Entry No." += 1;
                     BatchCommentUpdateBuffer."Entity Type" := BatchCommentUpdateBuffer."Entity Type"::Vendor;
                     BatchCommentUpdateBuffer."Entity No." := Vendor."No.";
+                    BatchCommentUpdateBuffer.Insert(true);
                     BatchCommentUpdateBuffer."Entity Name" := Vendor.Name;
                     BatchCommentUpdateBuffer."Old Comment" := Vendor."ESD Comment";
                     BatchCommentUpdateBuffer."Transfer Comment" := Vendor."Transfer Comment";
-                    BatchCommentUpdateBuffer.Insert();
+                    BatchCommentUpdateBuffer.Modify(true);
                 end;
                 BatchCommentUpdateBuffer.Reset();
             until Vendor.Next() = 0;
