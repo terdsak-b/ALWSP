@@ -160,7 +160,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         SetupData();
 
         // [WHEN] The order status is checked
-        GetPartialliFullyAndMultiPostedSalesOrder();
+        GetPartiallyFullyAndMultiPostedSalesOrder();
 
         // [THEN] The order status should reflect the correct location information
         CheckSalesOrder();
@@ -187,10 +187,13 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
     var
         Number: Integer;
     begin
-        if GlobalPurchaseHeader.IsEmpty() then
+        if not GlobalPurchaseHeader.FindSet() then begin
             for Number := 1 to 3 do
                 CreatePurchaseOrderAndCreateWarehouseReceiptAndPost(Number);
+            CheckPurchaseOrder();
+        end;
 
+        GlobalAssert.RecordCount(GlobalPurchaseHeader, 3);
         if GlobalPurchaseHeader.FindSet() then
             repeat
                 case true of
@@ -280,9 +283,13 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
     var
         Number: Integer;
     begin
-        if GlobalSalesHeader.IsEmpty() then
+        if not GlobalSalesHeader.FindSet() then begin
             for Number := 1 to 3 do
                 CreateSalesOrderAndWarehouseShipmentAndPost(Number);
+            CheckSalesOrder();
+        end;
+
+        GlobalAssert.RecordCount(GlobalSalesHeader, 3);
         if GlobalSalesHeader.FindSet() then
             repeat
                 case true of
@@ -426,14 +433,14 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
     begin
         case CaseNo of
             1:
-                GlobalPurchaseHeader.SetRange("Posting Description", 'TEST_PO_P');
+                GlobalPurchaseHeader.SetFilter("Posting Description", 'TEST_PO_P');
             2:
-                GlobalPurchaseHeader.SetRange("Posting Description", 'TEST_PO_F');
+                GlobalPurchaseHeader.SetFilter("Posting Description", 'TEST_PO_F');
             3:
-                GlobalPurchaseHeader.SetRange("Posting Description", 'TEST_PO_M');
+                GlobalPurchaseHeader.SetFilter("Posting Description", 'TEST_PO_M');
         end;
 
-        if not GlobalPurchaseHeader.IsEmpty() then
+        if GlobalPurchaseHeader.FindFirst() then
             exit;
 
         LibraryPurchase.CreatePurchHeader(GlobalPurchaseHeader, "Purchase Document Type"::Order, GlobalVendor."No.");
@@ -471,6 +478,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
                     GlobalWarehouseReceiptLine.Validate("Qty. to Receive", Round(GlobalWarehouseReceiptLine.Quantity / 2.00, 0.1, '='));
                     GlobalWarehouseReceiptLine.Modify(true);
                 end;
+
         end;
 
         GlobalWarehouseReceiptHeader.SetRange("Location Code", GlobalPurchaseHeader."Location Code");
@@ -486,14 +494,14 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
     begin
         case CaseNo of
             1:
-                GlobalSalesHeader.SetRange("Posting Description", 'TEST_SO_P');
+                GlobalSalesHeader.SetFilter("Posting Description", 'TEST_SO_P');
             2:
-                GlobalSalesHeader.SetRange("Posting Description", 'TEST_SO_F');
+                GlobalSalesHeader.SetFilter("Posting Description", 'TEST_SO_F');
             3:
-                GlobalSalesHeader.SetRange("Posting Description", 'TEST_SO_M');
+                GlobalSalesHeader.SetFilter("Posting Description", 'TEST_SO_M');
         end;
 
-        if not GlobalSalesHeader.IsEmpty() then
+        if GlobalSalesHeader.FindFirst() then
             exit;
 
         LibrarySales.CreateSalesHeader(GlobalSalesHeader, "Sales Document Type"::Order, GlobalCustomer."No.");
@@ -531,6 +539,7 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
                     GlobalWarehouseShipmentLine.Validate("Qty. to Ship", Round(GlobalWarehouseShipmentLine.Quantity / 2.00, 0.1, '='));
                     GlobalWarehouseShipmentLine.Modify(true);
                 end;
+
         end;
 
         GlobalWarehouseShipmentHeader.SetRange("Location Code", GlobalSalesHeader."Location Code");
@@ -610,10 +619,10 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         GlobalIsHandle := true;
     end;
 
-    local procedure GetPartialliFullyAndMultiPostedSalesOrder()
+    local procedure GetPartiallyFullyAndMultiPostedSalesOrder()
     begin
-        GlobalSalesHeader.SetRange("Document Type", GlobalSalesHeader."Document Type"::Order);
-        GlobalSalesHeader.SetRange(Status, GlobalSalesHeader.Status::Released);
+        GlobalSalesHeader.SetRange("Document Type", "Sales Document Type"::Order);
+        GlobalSalesHeader.SetRange(Status, "Sales Document Status"::Released);
         GlobalSalesHeader.SetRange("Location Code", GlobalLocation.Code);
         GlobalSalesHeader.SetRange("Sell-to Customer No.", GlobalCustomer."No.");
         GlobalSalesHeader.SetFilter("Posting Description", 'TEST_SO_*');
@@ -621,8 +630,8 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
 
     local procedure GetPartiallyFullyAndMultiPostedPurchaseOrder()
     begin
-        GlobalPurchaseHeader.SetRange("Document Type", GlobalPurchaseHeader."Document Type"::Order);
-        GlobalPurchaseHeader.SetRange(Status, GlobalPurchaseHeader.Status::Released);
+        GlobalPurchaseHeader.SetRange("Document Type", "Purchase Document Type"::Order);
+        GlobalPurchaseHeader.SetRange(Status, "Purchase Document Status"::Released);
         GlobalPurchaseHeader.SetRange("Location Code", GlobalLocation.Code);
         GlobalPurchaseHeader.SetRange("Pay-to Vendor No.", GlobalVendor."No.");
         GlobalPurchaseHeader.SetFilter("Posting Description", 'TEST_PO_*');
