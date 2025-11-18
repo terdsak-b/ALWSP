@@ -74,6 +74,7 @@ codeunit 50006 "Batch Comment Update Test"
         Customer: Record Customer;
         Vendor: Record Vendor;
         LibraryRandom: Codeunit "Library - Random";
+        LibraryUtility: Codeunit "Library - Utility";
     begin
         Clear(GlobalESDCommentMsg);
         GlobalBatchCommentUpdateBuffer.Init();
@@ -97,7 +98,7 @@ codeunit 50006 "Batch Comment Update Test"
                 until Vendor.Next() = 0;
         end;
 
-        GlobalESDCommentMsg := 'Update Comment: ' + LibraryRandom.RandText(10);
+        GlobalESDCommentMsg := 'Update Comment: ' + LibraryRandom.RandText(10) + LibraryUtility.GenerateRandomText(10);
 
         if CreateComments then begin
             // Create ESD comments for customers and vendors

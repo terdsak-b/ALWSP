@@ -5,17 +5,16 @@ codeunit 50007 ReplacementItemMgt
         SalesLine: Record "Sales Line";
         Item: Record Item;
         ItemLedgerEntry: Record "Item Ledger Entry";
-        ConfirmMsgPart: Label 'Current item does not have enough stock.\Do you want to replace item %1 to %2 in this sales order?';
+        ConfirmMsgPart: Label 'Current item doesn''t have enough stock and it''s set replacement.\Do you want to replace item %1 to %2 in this sales order?';
     begin
         SalesLine.SetRange("Document No.", SalesHeader."No.");
-
         if SalesLine.FindSet() then
             repeat
                 if Item.Get(SalesLine."No.") then begin
                     ItemLedgerEntry.SetRange("Item No.", Item."No.");
                     ItemLedgerEntry.CalcSums(Quantity);
                     if (Item."Replacement Item" <> '') and (ItemLedgerEntry.Quantity < SalesLine.Quantity) then
-                        if Confirm(StrSubstNo(ConfirmMsgPart, Item."No.", Item."Replacement Item")) then
+                        if Confirm(StrSubstNo(ConfirmMsgPart, Item."No.", Item."Replacement Item")) then begin
                             if SalesLine.FindSet(true) then
                                 repeat
                                     if Item.Get(SalesLine."No.") then begin
@@ -23,7 +22,9 @@ codeunit 50007 ReplacementItemMgt
                                         SalesLine.Modify();
                                     end;
                                 until SalesLine.Next() = 0;
-                    SalesHeader.Modify(true);
+                            SalesHeader.Modify(true);
+                        end;
+
                 end;
 
             until SalesLine.Next() = 0;

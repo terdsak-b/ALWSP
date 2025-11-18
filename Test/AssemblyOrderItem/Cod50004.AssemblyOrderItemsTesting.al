@@ -1,22 +1,10 @@
-namespace ALWSP.ALWSP;
-using Microsoft.Assembly.Document;
-using Microsoft.Inventory.Item;
-using Microsoft.Inventory.BOM;
-using Microsoft.Assembly.Setup;
-using Microsoft.Foundation.NoSeries;
-using Microsoft.Inventory.Ledger;
-using Microsoft.Finance.GeneralLedger.Account;
-using Microsoft.Inventory.Location;
-using Microsoft.Inventory.Journal;
-using Microsoft.Assembly.History;
-
 codeunit 50004 "Assembly Order Items Testing"
 {
     Subtype = Test;
 
     var
         GlobalAssemblyHeader: Record "Assembly Header";
-        GlobalItem: Record Item temporary;
+        GlobalItem: Record Item;
         GlobalLocation: Record Location;
         GlobalAssert: Codeunit "Assert";
         GlobalChildQty: Decimal;
@@ -74,8 +62,6 @@ codeunit 50004 "Assembly Order Items Testing"
 
     [ConfirmHandler]
     procedure ConfirmHandler(Question: Text; var Answer: Boolean)
-    var
-        OneAsmOrderMsg: Label 'Created assembly order: %1\Do you want to view the created assembly orders?';
     begin
         Answer := true;
 
@@ -189,27 +175,24 @@ codeunit 50004 "Assembly Order Items Testing"
     local procedure CreateSetupDataForPostAssemvblyOrder()
     var
         BOMComponent: Record "BOM Component";
-        Item: Record Item;
+        GenBusinessPostingGroup: Record "Gen. Business Posting Group";
+        GeneralPostingSetup: Record "General Posting Setup";
+        GenProductPostingGroup: Record "Gen. Product Posting Group";
+        GLAccount: Record "G/L Account";
         ItemJournalLine: Record "Item Journal Line";
         Location: Record Location;
+        LibraryERM: Codeunit "Library - ERM";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryWarehouse: Codeunit "Library - Warehouse";
         ErrorMsg: Label 'No Assembly Items found in the database.';
     begin
-        Item.Init();
-        Item.SetRange("Assembly BOM", true);
+        GlobalItem.Init();
+        GlobalItem.SetRange("Assembly BOM", true);
         Location.Init();
         LibraryWarehouse.CreateLocation(GlobalLocation);
-
-        GlobalItem.DeleteAll();
-        GlobalItem.Reset();
-
-        if Item.FindSet() then begin
+        if GlobalItem.FindSet() then begin
             repeat
-                GlobalItem := Item;
-                GlobalItem.Insert();
-
-                BOMComponent.SetRange("Parent Item No.", Item."No.");
+                BOMComponent.SetRange("Parent Item No.", GlobalItem."No.");
                 if BOMComponent.FindSet() then
                     repeat
                         if BOMComponent.Type = BOMComponent.Type::Item then begin
@@ -227,18 +210,35 @@ codeunit 50004 "Assembly Order Items Testing"
                             LibraryInventory.PostItemJournalLine(ItemJournalLine."Journal Template Name",
                                                                  ItemJournalLine."Journal Batch Name");
                         end;
+
                     until BOMComponent.Next() = 0;
-            until Item.Next() = 0;
+
+                CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
+
+                GenBusinessPostingGroup.SetRange(Code, 'DOMESTIC');
+                GenBusinessPostingGroup.FindFirst();
+                GenProductPostingGroup.SetRange(Code, 'SERVICES');
+                GenProductPostingGroup.FindFirst();
+
+                GeneralPostingSetup.Get(GenBusinessPostingGroup.Code, GenProductPostingGroup.Code);
+                LibraryERM.CreateGLAccount(GLAccount);
+                GeneralPostingSetup.Validate("Overhead Applied Account", GLAccount."No.");
+                GeneralPostingSetup.Modify();
+
+            until GlobalItem.Next() = 0;
         end else begin
+
+            Commit();
+
             asserterror;
             GlobalAssert.ExpectedError(ErrorMsg);
         end;
+
     end;
 
     local procedure Initialize()
     var
         LibraryRandom: Codeunit "Library - Random";
-        LibraryWarehouse: Codeunit "Library - Warehouse";
     begin
         Clear(GlobalExpectedMsg);
         Clear(GlobalLocation);
@@ -279,17 +279,15 @@ codeunit 50004 "Assembly Order Items Testing"
             GlobalAssemblyHeader.FindLast();
             GlobalAssemblyHeader.Validate("Location Code", GlobalLocation.Code);
             // Posting Setup Assembly order
-            CreateInventoryPostingSetup(GlobalLocation.Code, GlobalItem."Inventory Posting Group");
+
 
             // Post Assembly order
             LibraryAssembly.PostAssemblyHeader(GlobalAssemblyHeader, '');
         end;
+
     end;
 
     local procedure VerifyAsmOrder()
-    var
-        AssemblyLine: Record "Assembly Line";
-        BOMComponent: Record "BOM Component";
     begin
         if GlobalItem.FindFirst() then begin
             GlobalAssemblyHeader.SetRange("Document Type", GlobalAssemblyHeader."Document Type"::Order);
@@ -330,6 +328,7 @@ codeunit 50004 "Assembly Order Items Testing"
                         GlobalAssert.AreEqual(ExpectedQty, AssemblyLine."Remaining Quantity", GlobalValueShouldBeMatched);
                     until (AssemblyLine.Next() = 0) and (BOMComponent.Next() = 0);
         end;
+
     end;
 
     local procedure VerifyPostedAssemblyOrderViaItemLedgerEntries()
@@ -365,8 +364,12 @@ codeunit 50004 "Assembly Order Items Testing"
                         if PostedAssemblyLine.FindFirst() then begin
                             GlobalAssert.AreEqual(-PostedAssemblyLine.Quantity, ItemLedgerEntry."Quantity", GlobalValueShouldBeMatched);
                         end;
+
                     end;
+
                 until ItemLedgerEntry.Next() = 0;
         end;
+
     end;
+
 }
