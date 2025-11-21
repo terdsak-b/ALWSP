@@ -35,17 +35,12 @@ report 50000 "Calculate Depreciation"
                 end;
 
                 if GlobalFilterList.Count = 1 then begin
-                    GlobalItemDepreciationManagement.UpdateItemDepreciationRecordHeader(ItemDepreciation,
-                                                                           GlobalTotalPrice,
-                                                                           GlobalCarcassValue,
-                                                                           GlobalYearOfDepreciation,
-                                                                           GlobalPurchaseDate,
-                                                                           GlobalLastDepreciationDate);
-                    GlobalItemDepreciationManagement.UpdateItemDepreciationRecordLineAndCalculationRemainingAmountHeader(ItemDepreciation,
+                    GlobalItemDepreciationManagement.UpdateItemDepreciationRecord(ItemDepreciation,
                                                                             GlobalTotalPrice,
                                                                             GlobalCarcassValue,
                                                                             GlobalYearOfDepreciation,
-                                                                            GlobalPurchaseDate);
+                                                                            GlobalPurchaseDate,
+                                                                            GlobalLastDepreciationDate);
 
                     Page.Run(Page::ItemDepreciationCard, ItemDepreciation);
                 end else begin
@@ -55,17 +50,12 @@ report 50000 "Calculate Depreciation"
                             if ItemDepreciation."Item Type" <> "Depreciation Item Type"::FA then
                                 continue; // Skip non-fixed asset items
 
-                            GlobalItemDepreciationManagement.UpdateItemDepreciationRecordHeader(ItemDepreciation,
-                                                                           ItemDepreciation."Total Price",
-                                                                           ItemDepreciation."Carcass value",
-                                                                           ItemDepreciation."Year of Depreciation",
-                                                                           ItemDepreciation."Purchase Date",
-                                                                           ItemDepreciation."Last Depreciation Date");
-                            GlobalItemDepreciationManagement.UpdateItemDepreciationRecordLineAndCalculationRemainingAmountHeader(ItemDepreciation,
+                            GlobalItemDepreciationManagement.UpdateItemDepreciationRecord(ItemDepreciation,
                                                                             ItemDepreciation."Total Price",
                                                                             ItemDepreciation."Carcass value",
                                                                             ItemDepreciation."Year of Depreciation",
-                                                                            ItemDepreciation."Purchase Date");
+                                                                            ItemDepreciation."Purchase Date",
+                                                                            ItemDepreciation."Last Depreciation Date");
                         end;
 
                     end;
@@ -133,10 +123,11 @@ report 50000 "Calculate Depreciation"
                 else
                     Page.Run(Page::"Item Depreciation List");
             end;
+
         end;
     }
 
-    procedure SetSourcePage(SourcePageID: Integer)
+    internal procedure SetSourcePage(SourcePageID: Integer)
     begin
         GlobalSourcePageID := SourcePageID;
     end;

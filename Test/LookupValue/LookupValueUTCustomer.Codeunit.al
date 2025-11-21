@@ -48,7 +48,7 @@ codeunit 81000 "LookupValue UT Customer"
         LookupValueCode := 'SC #0002';
         //[GIVEN] Customer record variable
         // See local variable Customer
-
+        Commit();
         //[WHEN] Set non-existing lookup value on customer
         asserterror SetLookupValueOnCustomer(Customer, LookupValueCode);
 

@@ -43,17 +43,7 @@ codeunit 50012 ItemDepreciationManagement
 
     end;
 
-    internal procedure UpdateItemDepreciationRecordHeader(var ItemDepreciation: Record "Item Depreciation"; var TotalPrice: Decimal; var CarcassValue: Decimal; var YearOfDepreciation: Integer; var PurchaseDate: Date; var LastDepreciationDate: Date)
-    begin
-        ItemDepreciation.Validate("Purchase Date", PurchaseDate);
-        ItemDepreciation.Validate("Total Price", TotalPrice);
-        ItemDepreciation.Validate("Carcass value", CarcassValue);
-        ItemDepreciation.Validate("Year of Depreciation", YearOfDepreciation);
-        ItemDepreciation.Validate("Last Depreciation Date", WorkDate());
-        ItemDepreciation.Modify(true);
-    end;
-
-    internal procedure UpdateItemDepreciationRecordLineAndCalculationRemainingAmountHeader(var ItemDepreciation: Record "Item Depreciation"; var TotalPrice: Decimal; var CarcassValue: Decimal; var YearOfDepreciation: Integer; var PurchaseDate: Date)
+    internal procedure UpdateItemDepreciationRecord(var ItemDepreciation: Record "Item Depreciation"; var TotalPrice: Decimal; var CarcassValue: Decimal; var YearOfDepreciation: Integer; var PurchaseDate: Date; var LastDepreciationDate: Date)
     var
         ItemDepreciationLine: Record ItemDepreciationLine;
         IsFirstYear: Boolean;
@@ -68,6 +58,13 @@ codeunit 50012 ItemDepreciationManagement
     begin
         if YearOfDepreciation <= 0 then
             exit;
+
+        ItemDepreciation.Validate("Purchase Date", PurchaseDate);
+        ItemDepreciation.Validate("Total Price", TotalPrice);
+        ItemDepreciation.Validate("Carcass value", CarcassValue);
+        ItemDepreciation.Validate("Year of Depreciation", YearOfDepreciation);
+        ItemDepreciation.Validate("Last Depreciation Date", WorkDate());
+        ItemDepreciation.Modify(true);
 
         ItemDepreciationLine.SetRange("Source No.", ItemDepreciation."Item No.");
         ItemDepreciationLine.SetRange("Source Type", ItemDepreciation."Item Type");
@@ -112,7 +109,7 @@ codeunit 50012 ItemDepreciationManagement
 
                 // Set monthly depreciation based on purchase date and total months
                 // January
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 1)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 1)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Jan, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -122,7 +119,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Jan, 0.00);
 
                 // February
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 2)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 2)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Feb, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -132,7 +129,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Feb, 0.00);
 
                 // March
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 3)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 3)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Mar, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -142,7 +139,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Mar, 0.00);
 
                 // April
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 4)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 4)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Apr, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -152,7 +149,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Apr, 0.00);
 
                 // May
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 5)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 5)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(May, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -162,7 +159,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(May, 0.00);
 
                 // June
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 6)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 6)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Jun, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -172,7 +169,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Jun, 0.00);
 
                 // July
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 7)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 7)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Jul, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -182,7 +179,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Jul, 0.00);
 
                 // August
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 8)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 8)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Aug, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -192,7 +189,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Aug, 0.00);
 
                 // September
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 9)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 9)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Sep, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -202,7 +199,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Sep, 0.00);
 
                 // October
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 10)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 10)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Oct, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -212,7 +209,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Oct, 0.00);
 
                 // November
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 11)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 11)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Nov, MonthlyDepreciation);
                         MonthCounter += 1;
@@ -222,7 +219,7 @@ codeunit 50012 ItemDepreciationManagement
                     ItemDepreciationLine.Validate(Nov, 0.00);
 
                 // December
-                if (CurrentYear > PurchaseYear) or ((CurrentYear = PurchaseYear) and (PurchaseMonth <= 12)) then begin
+                if (CurrentYear > PurchaseYear) or (IsFirstYear and (PurchaseMonth <= 12)) then begin
                     if MonthCounter < TotalMonths then begin
                         ItemDepreciationLine.Validate(Dec, MonthlyDepreciation);
                         MonthCounter += 1;
