@@ -548,6 +548,21 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         LibraryWarehouse.PostWhseShipment(GlobalWarehouseShipmentHeader, false);
     end;
 
+    local procedure CreateLookupValueCode(): Code[10]
+    var
+        LookupValue: Record LookupValue;
+        LibraryUtility: Codeunit "Library - Utility";
+    begin
+        LookupValue.Init();
+        LookupValue.Validate(
+            Code,
+            LibraryUtility.GenerateRandomCode(LookupValue.FieldNo(Code),
+            Database::LookupValue));
+        LookupValue.Validate(Description, LookupValue.Code);
+        LookupValue.Insert();
+        exit(LookupValue.Code);
+    end;
+
     local procedure CreateSetupDataforPurchaseOrderAndSalesOrder()
     var
         ItemJournalLine: Record "Item Journal Line";
@@ -582,7 +597,8 @@ codeunit 50010 "Test Order Status Ctrl.Locat"
         GlobalCustomer.SetRange("Location Code", GlobalLocation.Code);
         if not GlobalCustomer.FindFirst() then begin
             LibrarySales.CreateCustomer(GlobalCustomer);
-            GlobalCustomer."Location Code" := GlobalLocation.Code;
+            GlobalCustomer.Validate("Location Code", GlobalLocation.Code);
+            GlobalCustomer.Validate("Lookup Value Code", CreateLookupValueCode());
             GlobalCustomer.Modify(true);
         end;
 

@@ -18,7 +18,6 @@ codeunit 50008 "Test Replacement Item"
         GlobalSalesHeader: Record "Sales Header";
         GlobalSalesLine: Record "Sales Line";
         GlobalSalesShipmentHeader: Record "Sales Shipment Header";
-        GlobalCustomer: Record Customer;
         GlobalAssert: Codeunit "Assert";
         GlobalLibraryInventory: Codeunit "Library - Inventory";
         GlobalLibrarySales: Codeunit "Library - Sales";
@@ -28,13 +27,16 @@ codeunit 50008 "Test Replacement Item"
 
     [Test]
     procedure "01_CreateItemAndSetReplacementItemAndPostInvforReplacement"()
+    var
+        Customer: Record Customer;
     begin
         // [SCENARIO] Setup an item with a replacement item
-        // [GIVEN] No. Series Item "M000x" insufficient with Replacement Item "R000x" more available
         Initialize();
+        // [GIVEN] Customer
+        CreateCustomer(Customer);
 
         // [WHEN] Creating Item "M000x" with Replacement Item "R000x" and setting stock quantity
-        CreateItemMainAndReplacementItemWithStock();
+        CreateItemMainAndReplacementItemWithStock(Customer);
 
         // [THEN] Item "M000x" should have Replacement Item set to "R000x" and stock quantity as expected
         VerifyItemhasReplacementItemCorrectlyValued();
@@ -44,15 +46,17 @@ codeunit 50008 "Test Replacement Item"
     [Test]
     [HandlerFunctions('ConfirmHandler')]
     procedure "02_CreateSalesOrderWithReplacementItemAndPost"()
+    var
+        Customer: Record Customer;
     begin
         // [SCENARIO] Create a sales order with a replacement item and post it
         Initialize();
-
+        // [GIVEN] Customer 
+        CreateCustomer(Customer);
         // [GIVEN] Item "M000x" with Replacement Item "R000x" and insufficient stock for "M000x"
-        EnsureTestDataExists();
-
+        CreateItemMainAndReplacementItemWithStock(Customer);
         // [GIVEN] Creating Sales Order with Item "M000x"
-        CreateSalesOrderWithItemMain();
+        CreateSalesOrderWithItemMain(Customer);
 
         // [WHEN] Posting Sales Order and confirming replacement
         PostingSaleOrderAndConfirmingReplacement();
@@ -78,7 +82,7 @@ codeunit 50008 "Test Replacement Item"
     [ConfirmHandler]
     procedure ConfirmHandler(Question: Text; var Answer: Boolean)
     var
-        ExpectedConfirmMsgPart: Label 'Current item does not have enough stock.\Do you want to replace item %1 to %2 in this sales order?';
+        ExpectedConfirmMsgPart: Label 'Current item doesn''t have enough stock and it''s set replacement.\Do you want to replace item %1 to %2 in this sales order?';
     begin
         Answer := true;
 
@@ -222,7 +226,7 @@ codeunit 50008 "Test Replacement Item"
         InventoryPostingSetup.Modify();
     end;
 
-    local procedure CreateItemMainAndReplacementItemWithStock()
+    local procedure CreateItemMainAndReplacementItemWithStock(var Customer: Record Customer)
     var
         ItemJnlLine: Record "Item Journal Line";
         LibrarySales: Codeunit "Library - Sales";
@@ -238,8 +242,6 @@ codeunit 50008 "Test Replacement Item"
         GlobalItem.Validate("Replacement Item", GlobalReplacementItemCode);
         GlobalItem.Modify();
 
-        if not GlobalCustomer.FindFirst() then
-            LibrarySales.CreateCustomer(GlobalCustomer);
         if GlobalItem.Get(GlobalReplacementItemCode) then begin
             GlobalLibraryInventory.CreateItemJnlLine(ItemJnlLine,
                                                 ItemJnlLine."Entry Type"::"Positive Adjmt.",
@@ -249,8 +251,8 @@ codeunit 50008 "Test Replacement Item"
                                                 '');
 
             CreateInventoryPostingSetup('', GlobalItem."Inventory Posting Group");
-            CheckInsertVATPostingSetup(GlobalCustomer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
-            CreateGenPostingSetup(GlobalCustomer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
+            CheckInsertVATPostingSetup(Customer."VAT Bus. Posting Group", GlobalItem."VAT Prod. Posting Group");
+            CreateGenPostingSetup(Customer."Gen. Bus. Posting Group", GlobalItem."Gen. Prod. Posting Group");
 
             GlobalLibraryInventory.PostItemJournalLine(ItemJnlLine."Journal Template Name", ItemJnlLine."Journal Batch Name");
         end;
@@ -280,14 +282,11 @@ codeunit 50008 "Test Replacement Item"
         exit(Item);
     end;
 
-    local procedure CreateSalesOrderWithItemMain()
+    local procedure CreateSalesOrderWithItemMain(var Customer: Record Customer)
     begin
-        GlobalCustomer.FindFirst();
         GlobalItem.Get(GlobalReplacementItemCode);
-
-        GlobalLibrarySales.CreateSalesHeader(GlobalSalesHeader, "Sales Document Type"::Order, GlobalCustomer."No.");
+        GlobalLibrarySales.CreateSalesHeader(GlobalSalesHeader, "Sales Document Type"::Order, Customer."No.");
         GlobalLibrarySales.CreateSalesLine(GlobalSalesLine, GlobalSalesHeader, "Sales Line Type"::Item, GlobalMainItemCode, 10);
-
         GlobalSalesLine.Validate("Qty. to Ship", 5);
         GlobalSalesLine.Modify();
     end;
@@ -299,14 +298,26 @@ codeunit 50008 "Test Replacement Item"
         GlobalSalesLine.Reset();
     end;
 
-    local procedure EnsureTestDataExists()
+    local procedure CreateCustomer(var Customer: Record Customer)
     begin
-        // Create data only if it doesn't exist
-        if GlobalMainItemCode = '' then
-            CreateItemMainAndReplacementItemWithStock();
+        GlobalLibrarySales.CreateCustomer(Customer);
+        Customer.Validate("Lookup Value Code", CreateLookupValueCode());
+        Customer.Modify(true);
+    end;
 
-        if GlobalCustomer."No." = '' then
-            GlobalCustomer.FindFirst();
+    local procedure CreateLookupValueCode(): Code[10]
+    var
+        LookupValue: Record LookupValue;
+        LibraryUtility: Codeunit "Library - Utility";
+    begin
+        LookupValue.Init();
+        LookupValue.Validate(
+            Code,
+            LibraryUtility.GenerateRandomCode(LookupValue.FieldNo(Code),
+            Database::LookupValue));
+        LookupValue.Validate(Description, LookupValue.Code);
+        LookupValue.Insert();
+        exit(LookupValue.Code);
     end;
 
     local procedure VerifyItemhasReplacementItemCorrectlyValued()
@@ -321,5 +332,6 @@ codeunit 50008 "Test Replacement Item"
             ItemLedgerEntry.CalcSums(Quantity);
             GlobalAssert.AreEqual(10, ItemLedgerEntry.Quantity, GlobalValueShouldBeMatched);
         end;
+
     end;
 }
