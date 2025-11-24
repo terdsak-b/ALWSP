@@ -14,6 +14,7 @@ codeunit 50011 "ESD-Fixed Asset Test"
         GlobalCarcassValue: Decimal;
         GlobalTotalPrice: Decimal;
         GlobalYearOfDepreciation: Integer;
+        GlobalisInitialized: Boolean;
         GlobalValueShouldBeMatched: Label 'Value should be matched.';
 
     [Test]
@@ -79,7 +80,7 @@ codeunit 50011 "ESD-Fixed Asset Test"
         ItemDepreciation.Init();
         SalesAndReceivablesSetup.Get();
         ItemDepreciation."Item No." := NoSeries.GetNextNo(SalesAndReceivablesSetup."Item Nos.");
-        ItemDepreciation."Item Type" := ItemDepreciation."Item Type"::FA;
+        ItemDepreciation."Item Type" := "Depreciation Item Type"::FA;
         ItemDepreciation.Insert();
         ItemDepreciation.Validate("Purchase Date", PurchaseDate);
         ItemDepreciation.Validate("Item Name", Name);
@@ -114,11 +115,21 @@ codeunit 50011 "ESD-Fixed Asset Test"
 
     local procedure Initialize()
     begin
+        if GlobalisInitialized then
+            exit;
+
+        // Shere Fixures Lazy Setup
+        // If Changing the values below, please remember to delete existing test data first
         GlobalPurchaseDateFullyYear := 20180101D; // Set to Jan Only
         GlobalPurchaseDateHalfYear := 20180701D; // When want to change to other month, please delete existing test data first
-        GlobalTotalPrice := 110000.00;
+        GlobalTotalPrice := 200000.00;
         GlobalCarcassValue := 500.00;
         GlobalYearOfDepreciation := 5;
+
+        GlobalisInitialized := true;
+
+        Commit();
+
     end;
 
     local procedure SetupNoSeriesForTestData()
