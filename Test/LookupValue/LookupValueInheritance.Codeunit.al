@@ -8,14 +8,13 @@ codeunit 81006 "LookupValue Inheritance"
     end;
 
     var
-        Assert: Codeunit "Assert";
+        Assert: Codeunit Assert;
         LibrarySales: Codeunit "Library - Sales";
-        LibraryMarketing: Codeunit "Library - Marketing"; // Find the missing reference
+        LibraryMarketing: Codeunit "Library - Marketing";
         LibraryTemplates: Codeunit "Library - Templates";
-        LibraryVariableStorage: Codeunit "Library - Variable Storage"; // Find the missing reference
-        LibraryUtility: Codeunit "Library - Utility";
-        LibraryRapidStart: Codeunit "Library - Rapid Start";
-        LibrarySmallBusiness: Codeunit "Library - Small Business";
+        LibraryVariableStorage: Codeunit "Library - Variable Storage";
+        LibraryLookupValue: Codeunit "Library - Lookup Value";
+        LibraryMessages: Codeunit "Library - Messages";
         isInitialized: Boolean;
         LookupValueCode: Code[10];
 
@@ -101,18 +100,8 @@ codeunit 81006 "LookupValue Inheritance"
     end;
 
     local procedure CreateLookupValueCode(): Code[10]
-    // this smells like duplication ;-) - see test example 1
-    var
-        LookupValue: Record LookupValue;
     begin
-        LookupValue.Init();
-        LookupValue.Validate(
-            Code,
-            LibraryUtility.GenerateRandomCode(LookupValue.FieldNo(Code),
-            Database::LookupValue));
-        LookupValue.Validate(Description, LookupValue.Code);
-        LookupValue.Insert();
-        exit(LookupValue.Code);
+        exit(LibraryLookupValue.CreateLookupValueCode())
     end;
 
     local procedure CreateCustomerWithLookupValue(LookupValueCode: Code[10]): Code[20]
@@ -186,35 +175,13 @@ codeunit 81006 "LookupValue Inheritance"
     end;
 
     local procedure VerifyLookupValueOnSalesHeader(var SalesHeader: Record "Sales Header"; LookupValueCode: Code[10])
-    var
-        FieldOnTableTxt: Label '%1 on %2';
-    // this smells like duplication ;-) - see test example 1
     begin
-        Assert.AreEqual(
-            LookupValueCode,
-            SalesHeader."Lookup Value Code",
-            StrSubstNo(
-                FieldOnTableTxt,
-                SalesHeader.FieldCaption("Lookup Value Code"),
-                SalesHeader.TableCaption())
-            );
+        Assert.AreEqual(LookupValueCode, SalesHeader."Lookup Value Code", LibraryMessages.GetFieldOnTableTxt(SalesHeader.FieldCaption("Lookup Value Code"), SalesHeader.TableCaption()));
     end;
 
     local procedure VerifyLookupValueOnCustomer(CustomerNo: Code[20]; LookupValueCode: Code[10])
-    var
-        Customer: Record Customer;
-        FieldOnTableTxt: Label '%1 on %2';
-    // this smells like duplication ;-) - see test example 1
     begin
-        Customer.Get(CustomerNo);
-        Assert.AreEqual(
-            LookupValueCode,
-            Customer."Lookup Value Code",
-            StrSubstNo(
-                FieldOnTableTxt,
-                Customer.FieldCaption("Lookup Value Code"),
-                Customer.TableCaption())
-            );
+        LibraryLookupValue.VerifyLookupValueOnCustomer(CustomerNo, LookupValueCode);
     end;
 
     [ModalPageHandler]

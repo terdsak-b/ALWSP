@@ -9,8 +9,9 @@ codeunit 81001 "LookupValue UT Sales Document"
 
     var
         Assert: Codeunit Assert;
-        LibraryUtility: Codeunit "Library - Utility";
         LibrarySales: Codeunit "Library - Sales";
+        LibraryLookupValue: Codeunit "Library - Lookup Value";
+        LibraryMessages: Codeunit "Library - Messages";
         isInitialized: Boolean;
         LookupValueCode: Code[10];
 
@@ -202,18 +203,8 @@ codeunit 81001 "LookupValue UT Sales Document"
     end;
 
     local procedure CreateLookupValueCode(): Code[10]
-    // this smells like duplication ;-) - see test example 1
-    var
-        LookupValue: Record LookupValue;
     begin
-        LookupValue.Init();
-        LookupValue.Validate(
-            Code,
-            LibraryUtility.GenerateRandomCode(LookupValue.FieldNo(Code),
-            Database::LookupValue));
-        LookupValue.Validate(Description, LookupValue.Code);
-        LookupValue.Insert();
-        exit(LookupValue.Code);
+        exit(LibraryLookupValue.CreateLookupValueCode())
     end;
 
     local procedure CreateSalesHeader(var SalesHeader: Record "Sales Header")
@@ -308,30 +299,18 @@ codeunit 81001 "LookupValue UT Sales Document"
     local procedure VerifyLookupValueOnSalesHeader(DocumentType: Enum "Sales Document Type"; DocumentNo: Code[20]; LookupValueCode: Code[10])
     var
         SalesHeader: Record "Sales Header";
-        FieldOnTableTxt: Label '%1 on %2';
-    // this smells like duplication ;-) - see test example 1
     begin
         SalesHeader.Get(DocumentType, DocumentNo);
-        Assert.AreEqual(
-            LookupValueCode,
-            SalesHeader."Lookup Value Code",
-            StrSubstNo(
-                FieldOnTableTxt,
-                SalesHeader.FieldCaption("Lookup Value Code"),
-                SalesHeader.TableCaption())
-            );
+        Assert.AreEqual(LookupValueCode, SalesHeader."Lookup Value Code", LibraryMessages.GetFieldOnTableTxt(SalesHeader.FieldCaption("Lookup Value Code"), SalesHeader.TableCaption()));
     end;
 
     local procedure VerifyNonExistingLookupValueError(LookupValueCode: Code[10])
     var
         SalesHeader: Record "Sales Header";
         LookupValue: Record LookupValue;
-        ValueCannotBeFoundInTableTxt: Label 'The field %1 of table %2 contains a value (%3) that cannot be found in the related table (%4).';
-    // this smells like duplication ;-) - see test example 1
     begin
         Assert.ExpectedError(
-            StrSubstNo(
-                ValueCannotBeFoundInTableTxt,
+            LibraryMessages.GetValueCannotBeFoundInTableTxt(
                 SalesHeader.FieldCaption("Lookup Value Code"),
                 SalesHeader.TableCaption(),
                 LookupValueCode,

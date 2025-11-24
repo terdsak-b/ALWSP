@@ -199,22 +199,11 @@ codeunit 50011 "ESD-Fixed Asset Test"
                     ExpectedRemainingAmount := GlobalTotalPrice;
                     if ItemDepreciationLine.FindSet() then
                         repeat
-                            ExpectedRemainingAmount -= ExpectedDepreciationAmount;
-                            GlobalAssert.AreEqual(ExpectedNoOfYear, ItemDepreciationLine."No. of Year", GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedDepreciationAmount, ItemDepreciationLine."Depreciation Amount", GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedRemainingAmount, ItemDepreciationLine."Remaining Amount", GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.May, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
-                            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
+                            VerifyESDFullyYearDepreciationCalculatedCorrectly(ItemDepreciationLine,
+                                                                               ExpectedNoOfYear,
+                                                                               ExpectedDepreciationAmount,
+                                                                               ExpectedMonthlyDepreciation,
+                                                                               ExpectedRemainingAmount);
                             ExpectedNoOfYear += 1;
                         until ItemDepreciationLine.Next() = 0;
                 end else begin
@@ -335,21 +324,11 @@ codeunit 50011 "ESD-Fixed Asset Test"
                                     GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
                             end else begin
                                 ExpectedDepreciationAmount := ExpectedMonthlyDepreciation * 12;
-                                ExpectedRemainingAmount -= ExpectedDepreciationAmount;
-                                GlobalAssert.AreEqual(ExpectedDepreciationAmount, ItemDepreciationLine."Depreciation Amount", GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedRemainingAmount, ItemDepreciationLine."Remaining Amount", GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.May, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
+                                VerifyESDFullyYearDepreciationCalculatedCorrectly(ItemDepreciationLine,
+                                                                                   ExpectedNoOfYear,
+                                                                                   ExpectedDepreciationAmount,
+                                                                                   ExpectedMonthlyDepreciation,
+                                                                                   ExpectedRemainingAmount);
                             end;
 
                             ExpectedNoOfYear += 1;
@@ -389,5 +368,29 @@ codeunit 50011 "ESD-Fixed Asset Test"
             Index += 1;
         end;
 
+    end;
+
+    local procedure VerifyESDFullyYearDepreciationCalculatedCorrectly(var ItemDepreciationLine: Record ItemDepreciationLine;
+                                                                    var ExpectedNoOfYear: Integer;
+                                                                    var ExpectedDepreciationAmount: Decimal;
+                                                                    var ExpectedMonthlyDepreciation: Decimal;
+                                                                    var ExpectedRemainingAmount: Decimal)
+    begin
+        ExpectedRemainingAmount -= ExpectedDepreciationAmount;
+        GlobalAssert.AreEqual(ExpectedNoOfYear, ItemDepreciationLine."No. of Year", GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedDepreciationAmount, ItemDepreciationLine."Depreciation Amount", GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedRemainingAmount, ItemDepreciationLine."Remaining Amount", GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.May, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
     end;
 }
