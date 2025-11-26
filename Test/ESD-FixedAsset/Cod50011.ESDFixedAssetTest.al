@@ -1,7 +1,3 @@
-namespace ALWSP.ALWSP;
-using Microsoft.Sales.Setup;
-using Microsoft.Foundation.NoSeries;
-
 codeunit 50011 "ESD-Fixed Asset Test"
 {
     Subtype = Test;
@@ -199,7 +195,7 @@ codeunit 50011 "ESD-Fixed Asset Test"
                     ExpectedRemainingAmount := GlobalTotalPrice;
                     if ItemDepreciationLine.FindSet() then
                         repeat
-                            VerifyESDFullyYearDepreciationCalculatedCorrectly(ItemDepreciationLine,
+                            VerifyFullyYearDepreciationLineCalculatedCorrectly(ItemDepreciationLine,
                                                                                ExpectedNoOfYear,
                                                                                ExpectedDepreciationAmount,
                                                                                ExpectedMonthlyDepreciation,
@@ -221,110 +217,22 @@ codeunit 50011 "ESD-Fixed Asset Test"
                             IsLastYear := ExpectedNoOfYear = Date2DMY(GlobalPurchaseDateHalfYear, 3) + GlobalYearOfDepreciation;
                             GlobalAssert.AreEqual(ExpectedNoOfYear, ItemDepreciationLine."No. of Year", GlobalValueShouldBeMatched);
                             if IsFirstYear then begin
-                                ExpectedDepreciationAmount := ExpectedMonthlyDepreciation * (12 - (CurrentMonth - 1));
-                                ExpectedRemainingAmount -= ExpectedDepreciationAmount;
-                                GlobalAssert.AreEqual(ExpectedDepreciationAmount, ItemDepreciationLine."Depreciation Amount", GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedRemainingAmount, ItemDepreciationLine."Remaining Amount", GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 1 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 2 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 3 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 4 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 5 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.May, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.May, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 6 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 7 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 8 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 9 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 10 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 11 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
-                                if CurrentMonth <= 12 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
+                                VerifyFirstYearDepreciationLineCalculatedCorrectly(ItemDepreciationLine,
+                                                                                   ExpectedNoOfYear,
+                                                                                   ExpectedDepreciationAmount,
+                                                                                   ExpectedMonthlyDepreciation,
+                                                                                   ExpectedRemainingAmount,
+                                                                                   CurrentMonth);
                             end else if IsLastYear then begin
-                                ExpectedDepreciationAmount := ExpectedMonthlyDepreciation * (CurrentMonth - 1);
-                                ExpectedRemainingAmount -= ExpectedDepreciationAmount;
-                                GlobalAssert.AreEqual(ExpectedDepreciationAmount, ItemDepreciationLine."Depreciation Amount", GlobalValueShouldBeMatched);
-                                GlobalAssert.AreEqual(ExpectedRemainingAmount, ItemDepreciationLine."Remaining Amount", GlobalValueShouldBeMatched);
-                                if CurrentMonth > 1 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 2 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 3 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 4 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 5 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.May, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.May, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 6 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 7 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 8 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 9 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 10 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 11 then
-                                    GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched)
-                                else
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
-                                if CurrentMonth > 12 then
-                                    GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
+                                VerifyLastYearDepreciationLineCalculatedCorrectly(ItemDepreciationLine,
+                                                                                  ExpectedNoOfYear,
+                                                                                  ExpectedDepreciationAmount,
+                                                                                  ExpectedMonthlyDepreciation,
+                                                                                  ExpectedRemainingAmount,
+                                                                                  CurrentMonth);
                             end else begin
                                 ExpectedDepreciationAmount := ExpectedMonthlyDepreciation * 12;
-                                VerifyESDFullyYearDepreciationCalculatedCorrectly(ItemDepreciationLine,
+                                VerifyFullyYearDepreciationLineCalculatedCorrectly(ItemDepreciationLine,
                                                                                    ExpectedNoOfYear,
                                                                                    ExpectedDepreciationAmount,
                                                                                    ExpectedMonthlyDepreciation,
@@ -370,7 +278,7 @@ codeunit 50011 "ESD-Fixed Asset Test"
 
     end;
 
-    local procedure VerifyESDFullyYearDepreciationCalculatedCorrectly(var ItemDepreciationLine: Record ItemDepreciationLine;
+    local procedure VerifyFullyYearDepreciationLineCalculatedCorrectly(var ItemDepreciationLine: Record ItemDepreciationLine;
                                                                     var ExpectedNoOfYear: Integer;
                                                                     var ExpectedDepreciationAmount: Decimal;
                                                                     var ExpectedMonthlyDepreciation: Decimal;
@@ -392,5 +300,123 @@ codeunit 50011 "ESD-Fixed Asset Test"
         GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
         GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
         GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
+    end;
+
+    local procedure VerifyFirstYearDepreciationLineCalculatedCorrectly(var ItemDepreciationLine: Record ItemDepreciationLine;
+                                                                    var ExpectedNoOfYear: Integer;
+                                                                    var ExpectedDepreciationAmount: Decimal;
+                                                                    var ExpectedMonthlyDepreciation: Decimal;
+                                                                    var ExpectedRemainingAmount: Decimal;
+                                                                    var CurrentMonth: Integer)
+    begin
+        ExpectedDepreciationAmount := ExpectedMonthlyDepreciation * (12 - (CurrentMonth - 1));
+        ExpectedRemainingAmount -= ExpectedDepreciationAmount;
+        GlobalAssert.AreEqual(ExpectedDepreciationAmount, ItemDepreciationLine."Depreciation Amount", GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedRemainingAmount, ItemDepreciationLine."Remaining Amount", GlobalValueShouldBeMatched);
+        if CurrentMonth <= 1 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 2 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 3 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 4 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 5 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.May, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.May, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 6 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 7 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 8 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 9 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 10 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 11 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
+        if CurrentMonth <= 12 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
+    end;
+
+    local procedure VerifyLastYearDepreciationLineCalculatedCorrectly(var ItemDepreciationLine: Record ItemDepreciationLine;
+                                                                   var ExpectedNoOfYear: Integer;
+                                                                   var ExpectedDepreciationAmount: Decimal;
+                                                                   var ExpectedMonthlyDepreciation: Decimal;
+                                                                   var ExpectedRemainingAmount: Decimal;
+                                                                   var CurrentMonth: Integer)
+    begin
+        ExpectedDepreciationAmount := ExpectedMonthlyDepreciation * (CurrentMonth - 1);
+        ExpectedRemainingAmount -= ExpectedDepreciationAmount;
+        GlobalAssert.AreEqual(ExpectedDepreciationAmount, ItemDepreciationLine."Depreciation Amount", GlobalValueShouldBeMatched);
+        GlobalAssert.AreEqual(ExpectedRemainingAmount, ItemDepreciationLine."Remaining Amount", GlobalValueShouldBeMatched);
+        if CurrentMonth > 1 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jan, GlobalValueShouldBeMatched);
+        if CurrentMonth > 2 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Feb, GlobalValueShouldBeMatched);
+        if CurrentMonth > 3 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Mar, GlobalValueShouldBeMatched);
+        if CurrentMonth > 4 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Apr, GlobalValueShouldBeMatched);
+        if CurrentMonth > 5 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.May, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.May, GlobalValueShouldBeMatched);
+        if CurrentMonth > 6 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jun, GlobalValueShouldBeMatched);
+        if CurrentMonth > 7 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Jul, GlobalValueShouldBeMatched);
+        if CurrentMonth > 8 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Aug, GlobalValueShouldBeMatched);
+        if CurrentMonth > 9 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Sep, GlobalValueShouldBeMatched);
+        if CurrentMonth > 10 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Oct, GlobalValueShouldBeMatched);
+        if CurrentMonth > 11 then
+            GlobalAssert.AreEqual(ExpectedMonthlyDepreciation, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched)
+        else
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Nov, GlobalValueShouldBeMatched);
+        if CurrentMonth > 12 then
+            GlobalAssert.AreEqual(0.00, ItemDepreciationLine.Dec, GlobalValueShouldBeMatched);
     end;
 }
