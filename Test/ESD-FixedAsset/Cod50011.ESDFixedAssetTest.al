@@ -76,8 +76,8 @@ codeunit 50011 "ESD-Fixed Asset Test"
         ItemDepreciation.Init();
         SalesAndReceivablesSetup.Get();
         ItemDepreciation."Item No." := NoSeries.GetNextNo(SalesAndReceivablesSetup."Item Nos.");
-        ItemDepreciation."Item Type" := "Depreciation Item Type"::FA;
         ItemDepreciation.Insert();
+        ItemDepreciation.Validate("Item Type", "Depreciation Item Type"::FA);
         ItemDepreciation.Validate("Purchase Date", PurchaseDate);
         ItemDepreciation.Validate("Item Name", Name);
         ItemDepreciation.Validate("Total Price", GlobalTotalPrice);
