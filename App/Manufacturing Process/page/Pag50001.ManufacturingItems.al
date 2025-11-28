@@ -24,18 +24,6 @@ page 50001 "Manufacturing Items"
                     ApplicationArea = All;
                     Editable = false;
                 }
-                field("Production Quantity"; GlobalQty)
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the quantity to be produced for the item (Default 1).';
-
-                    trigger OnValidate()
-                    begin
-                        if GlobalQty <= 0 then
-                            Error('Production Quantity cannot be less than 0.');
-                        GlobalQtyDict.Set(Rec."No.", GlobalQty);
-                    end;
-                }
                 field("Description"; Rec.Description)
                 {
                     ApplicationArea = All;
@@ -75,6 +63,18 @@ page 50001 "Manufacturing Items"
                 {
                     ApplicationArea = All;
                     Editable = false;
+                }
+                field("Production Quantity"; GlobalQty)
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the quantity to be produced for the item (Default 1).';
+
+                    trigger OnValidate()
+                    begin
+                        if GlobalQty <= 0 then
+                            Error('Production Quantity cannot be less than 0.');
+                        GlobalQtyDict.Set(Rec."No.", GlobalQty);
+                    end;
                 }
             }
         }
