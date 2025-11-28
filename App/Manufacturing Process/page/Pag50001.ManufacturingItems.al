@@ -1,9 +1,3 @@
-namespace ALWSP.ALWSP;
-
-using Microsoft.Inventory.Item;
-using Microsoft.Manufacturing.Document;
-using Microsoft.Manufacturing.Setup;
-
 page 50001 "Manufacturing Items"
 {
     ApplicationArea = All;
@@ -84,7 +78,7 @@ page 50001 "Manufacturing Items"
     {
         area(Processing)
         {
-            action(CreateAllProductionOrder)
+            action(CreateAllProductionOrders)
             {
                 ApplicationArea = Manufacturing;
                 Caption = 'Create All of Production Order';
@@ -196,12 +190,12 @@ page 50001 "Manufacturing Items"
     trigger OnOpenPage()
     begin
         //Filter data
-        Rec.SetRange(Type, Rec.Type::Inventory);
-        Rec.SetRange("Replenishment System", Rec."Replenishment System"::"Prod. Order");
-        Rec.SetRange("Manufacturing Policy", Rec."Manufacturing Policy"::"Make-to-Order");
+        Rec.SetRange(Type, "Item Type"::Inventory);
+        Rec.SetRange("Replenishment System", "Replenishment System"::"Prod. Order");
+        Rec.SetRange("Manufacturing Policy", "Manufacturing Policy"::"Make-to-Order");
         Rec.SetFilter("Routing No.", '<>%1', '');
         Rec.SetFilter("Production BOM No.", '<>%1', '');
-        Rec.SetRange("Reordering Policy", Rec."Reordering Policy"::Order);
+        Rec.SetRange("Reordering Policy", "Reordering Policy"::Order);
 
         if Rec.FindSet() then
             repeat

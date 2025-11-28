@@ -5,6 +5,8 @@ codeunit 50002 "Manufacturing Process Testing"
     var
         GlobalItem: Record Item;
         GlobalAssert: Codeunit Assert;
+        GlobalIsMultibleOrders: Boolean;
+        GlobalItemNoList: List of [Code[20]];
         GlobalNegativeQty: Integer;
         GlobalQty: Integer;
         GlobalExpectedConfirm: Text;
@@ -45,6 +47,26 @@ codeunit 50002 "Manufacturing Process Testing"
         GlobalAssert.ExpectedError(ErrorMessage);
     end;
 
+    [Test]
+    [HandlerFunctions('ConfirmHandler,ModalPageHandler')]
+    procedure "03__CreateMultipleProductionOrdersAndVerify"()
+    var
+        ItemNo: Code[20];
+    begin
+        // [SCENARIO] Create multiple Production Orders from Manufacturing Items page
+        Initialize();
+
+        // [GIVEN] Item with required manufacturing process setup exists
+        CreateMultipleProdItem(ItemNo);
+
+        // [WHEN] Create Production Orders for all items on the page
+        CreateProductionOrder(3);
+
+        // [THEN] Verify item was created with correct setup
+        VerifyMultipleProdOrder(ItemNo);
+
+    end;
+
     [ConfirmHandler]
     procedure ConfirmHandler(Question: Text; var Answer: Boolean)
     begin
@@ -55,81 +77,15 @@ codeunit 50002 "Manufacturing Process Testing"
         if not Question.Contains(':') then
             exit;
 
-        GlobalAssert.ExpectedConfirm(GlobalExpectedConfirm, Question);
+        if GlobalIsMultibleOrders then
+            GlobalAssert.ExpectedConfirm(GlobalExpectedConfirm, Question)
+        else
+            GlobalAssert.ExpectedConfirm(GlobalExpectedConfirm, Question);
     end;
 
     [ModalPageHandler]
     procedure ModalPageHandler(var ProdOrderPage: TestPage "Production Order List")
     begin
-    end;
-
-    local procedure CreateItemWithItemBOM(): Code[20]
-    var
-        RoutingHeader: Record "Routing Header";
-        LibraryInventory: Codeunit "Library - Inventory";
-        LibraryManufacturing: Codeunit "Library - Manufacturing";
-    begin
-        LibraryInventory.CreateItem(GlobalItem);
-        GlobalItem.Validate("Replenishment System", "Replenishment System"::"Prod. Order");
-        GlobalItem.Validate("Manufacturing Policy", "Manufacturing Policy"::"Make-to-Order");
-        GlobalItem.Validate("Reordering Policy", "Reordering Policy"::Order);
-        GlobalItem.Modify();
-
-        LibraryManufacturing.CreateRouting(RoutingHeader, GlobalItem, '', 0.00);
-        RoutingHeader.Get(GlobalItem."Routing No.");
-        RoutingHeader.Validate(Status, "Routing Status"::New);
-        RoutingHeader.Rename(GlobalItem."No.");
-        RoutingHeader.Validate(Status, "Routing Status"::Certified);
-        RoutingHeader.Modify();
-
-        GlobalItem.Validate("Routing No.", GlobalItem."No.");
-        GlobalItem.Modify();
-        LibraryManufacturing.CreateProductionBOM(GlobalItem, 3);
-
-        exit(GlobalItem."No.");
-    end;
-
-    local procedure CreateProductionOrder(CaseNumber: Integer)
-    var
-        ManufacturingSetup: Record "Manufacturing Setup";
-        NoSeries: Codeunit "No. Series";
-        ExpectedProdOrderNo: Code[20];
-        ProdOrderMessageSinglePart: Label 'Created production order: %1\Do you want to view the created production orders?';
-        ProdOrderMessageMultiPart: Label 'Created production orders: %1..%2\Do you want to view the created production orders?';
-        ManufacturingItems: TestPage "Manufacturing Items";
-    begin
-        ManufacturingItems.OpenEdit();
-
-
-        case CaseNumber of
-            1:
-                begin
-                    ManufacturingItems.GoToRecord(GlobalItem);
-                    ManufacturingItems."Production Quantity".SetValue(GlobalQty);
-                    ManufacturingItems.CreateSelectProductionOrder.Invoke();
-
-                    ManufacturingSetup.Get();
-                    ExpectedProdOrderNo := IncStr(NoSeries.GetLastNoUsed(ManufacturingSetup."Released Order Nos."));
-                    GlobalExpectedConfirm := StrSubstNo(ProdOrderMessageSinglePart, ExpectedProdOrderNo);
-                end;
-            2:
-                begin
-                    ManufacturingItems.GoToRecord(GlobalItem);
-
-                    Commit();
-
-                    asserterror ManufacturingItems."Production Quantity".SetValue(GlobalNegativeQty);
-                    ManufacturingItems.Close();
-                end;
-
-        end;
-
-    end;
-
-    local procedure Initialize()
-    begin
-        GlobalQty := 3;
-        GlobalNegativeQty := -1;
     end;
 
     local procedure CheckProductionOrderCreatedCorrectly()
@@ -190,5 +146,113 @@ codeunit 50002 "Manufacturing Process Testing"
                 GlobalAssert.AreEqual(ProdOrderComponent.Quantity, ProductionBOMLine.Quantity, GlobalValueShouldBeMatch);
                 GlobalAssert.AreEqual(CalculatedExpectedQty, ProdOrderComponent."Expected Quantity", GlobalValueShouldBeMatch);
             until (ProdOrderComponent.Next() = 0) and (ProductionBOMLine.Next() = 0);
+    end;
+
+    local procedure CreateItemWithItemBOM(): Code[20]
+    var
+        RoutingHeader: Record "Routing Header";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryManufacturing: Codeunit "Library - Manufacturing";
+    begin
+        LibraryInventory.CreateItem(GlobalItem);
+        GlobalItem.Validate("Replenishment System", "Replenishment System"::"Prod. Order");
+        GlobalItem.Validate("Manufacturing Policy", "Manufacturing Policy"::"Make-to-Order");
+        GlobalItem.Validate("Reordering Policy", "Reordering Policy"::Order);
+        GlobalItem.Modify();
+
+        LibraryManufacturing.CreateRouting(RoutingHeader, GlobalItem, '', 0.00);
+        RoutingHeader.Get(GlobalItem."Routing No.");
+        RoutingHeader.Validate(Status, "Routing Status"::New);
+        RoutingHeader.Rename(GlobalItem."No.");
+        RoutingHeader.Validate(Status, "Routing Status"::Certified);
+        RoutingHeader.Modify();
+
+        GlobalItem.Validate("Routing No.", GlobalItem."No.");
+        GlobalItem.Modify();
+        LibraryManufacturing.CreateProductionBOM(GlobalItem, 3);
+
+        exit(GlobalItem."No.");
+    end;
+
+    local procedure CreateMultipleProdItem(var ItemNo: Code[20])
+    var
+        Number: Integer;
+    begin
+        for Number := 1 to 3 do begin
+            ItemNo := CreateItemWithItemBOM();
+            GlobalItemNoList.Add(ItemNo);
+        end;
+    end;
+
+    local procedure CreateProductionOrder(CaseNumber: Integer)
+    var
+        ManufacturingSetup: Record "Manufacturing Setup";
+        NoSeries: Codeunit "No. Series";
+        ExpectedProdOrderNo: Code[20];
+        Number: Integer;
+        ProdOrderMessageMultiPart: Label 'Created production orders: %1..%2\Do you want to view the created production orders?';
+        ProdOrderMessageSinglePart: Label 'Created production order: %1\Do you want to view the created production orders?';
+        ManufacturingItems: TestPage "Manufacturing Items";
+    begin
+        ManufacturingItems.OpenEdit();
+
+
+        case CaseNumber of
+            1:
+                begin
+                    ManufacturingItems.GoToRecord(GlobalItem);
+                    ManufacturingItems."Production Quantity".SetValue(GlobalQty);
+                    ManufacturingItems.CreateSelectProductionOrder.Invoke();
+
+                    ManufacturingSetup.Get();
+                    ExpectedProdOrderNo := IncStr(NoSeries.GetLastNoUsed(ManufacturingSetup."Released Order Nos."));
+                    GlobalExpectedConfirm := StrSubstNo(ProdOrderMessageSinglePart, ExpectedProdOrderNo);
+                end;
+            2:
+                begin
+                    ManufacturingItems.GoToRecord(GlobalItem);
+
+                    Commit();
+
+                    asserterror ManufacturingItems."Production Quantity".SetValue(GlobalNegativeQty);
+                    ManufacturingItems.Close();
+                end;
+            3:
+                begin
+                    ManufacturingSetup.Get();
+                    ExpectedProdOrderNo := IncStr(NoSeries.GetLastNoUsed(ManufacturingSetup."Released Order Nos."));
+                    for Number := 1 to GlobalItemNoList.Count() do begin
+                        ManufacturingItems.GoToKey(GlobalItemNoList.Get(Number));
+                        ManufacturingItems."Production Quantity".SetValue(GlobalQty);
+                    end;
+
+                    ManufacturingItems.CreateAllProductionOrders.Invoke();
+
+                    GlobalExpectedConfirm := StrSubstNo(ProdOrderMessageMultiPart,
+                                                        ExpectedProdOrderNo,
+                                                        NoSeries.GetLastNoUsed(ManufacturingSetup."Released Order Nos."));
+                    GlobalIsMultibleOrders := true;
+                    Commit();
+                end;
+
+        end;
+
+    end;
+
+    local procedure Initialize()
+    begin
+        GlobalQty := 3;
+        GlobalNegativeQty := -1;
+        Clear(GlobalItem);
+        Clear(GlobalItemNoList);
+        Clear(GlobalExpectedConfirm);
+    end;
+
+    local procedure VerifyMultipleProdOrder(var ItemNo: Code[20])
+    begin
+        foreach ItemNo in GlobalItemNoList do begin
+            GlobalItem.Get(ItemNo);
+            CheckProductionOrderCreatedCorrectly();
+        end;
     end;
 }
