@@ -5,7 +5,7 @@ codeunit 50002 "Manufacturing Process Testing"
     var
         GlobalItem: Record Item;
         GlobalAssert: Codeunit Assert;
-        GlobalIsMultibleOrders: Boolean;
+        GlobalIsMultipleOrders: Boolean;
         GlobalItemNoList: List of [Code[20]];
         GlobalNegativeQty: Integer;
         GlobalQty: Integer;
@@ -50,20 +50,18 @@ codeunit 50002 "Manufacturing Process Testing"
     [Test]
     [HandlerFunctions('ConfirmHandler,ModalPageHandler')]
     procedure "03__CreateMultipleProductionOrdersAndVerify"()
-    var
-        ItemNo: Code[20];
     begin
         // [SCENARIO] Create multiple Production Orders from Manufacturing Items page
         Initialize();
 
         // [GIVEN] Item with required manufacturing process setup exists
-        CreateMultipleProdItem(ItemNo);
+        CreateMultipleProdItem();
 
         // [WHEN] Create Production Orders for all items on the page
         CreateProductionOrder(3);
 
         // [THEN] Verify item was created with correct setup
-        VerifyMultipleProdOrder(ItemNo);
+        VerifyMultipleProdOrder();
 
     end;
 
@@ -71,13 +69,14 @@ codeunit 50002 "Manufacturing Process Testing"
     procedure ConfirmHandler(Question: Text; var Answer: Boolean)
     begin
         Answer := true;
-        if GlobalExpectedConfirm = '' then
-            exit;
 
         if not Question.Contains(':') then
             exit;
 
-        if GlobalIsMultibleOrders then
+        if GlobalExpectedConfirm = '' then
+            exit;
+
+        if GlobalIsMultipleOrders then
             GlobalAssert.ExpectedConfirm(GlobalExpectedConfirm, Question)
         else
             GlobalAssert.ExpectedConfirm(GlobalExpectedConfirm, Question);
@@ -174,8 +173,9 @@ codeunit 50002 "Manufacturing Process Testing"
         exit(GlobalItem."No.");
     end;
 
-    local procedure CreateMultipleProdItem(var ItemNo: Code[20])
+    local procedure CreateMultipleProdItem()
     var
+        ItemNo: Code[20];
         Number: Integer;
     begin
         for Number := 1 to 3 do begin
@@ -186,27 +186,25 @@ codeunit 50002 "Manufacturing Process Testing"
 
     local procedure CreateProductionOrder(CaseNumber: Integer)
     var
+        Item: Record Item;
         ManufacturingSetup: Record "Manufacturing Setup";
         NoSeries: Codeunit "No. Series";
         ExpectedProdOrderNo: Code[20];
         Number: Integer;
-        ProdOrderMessageMultiPart: Label 'Created production orders: %1..%2\Do you want to view the created production orders?';
+        ProdOrderMessageMultiPart: Label 'Created %1 production orders: %2...%3\Do you want to view the created production orders?';
         ProdOrderMessageSinglePart: Label 'Created production order: %1\Do you want to view the created production orders?';
         ManufacturingItems: TestPage "Manufacturing Items";
     begin
         ManufacturingItems.OpenEdit();
-
-
         case CaseNumber of
             1:
                 begin
                     ManufacturingItems.GoToRecord(GlobalItem);
                     ManufacturingItems."Production Quantity".SetValue(GlobalQty);
-                    ManufacturingItems.CreateSelectProductionOrder.Invoke();
-
                     ManufacturingSetup.Get();
-                    ExpectedProdOrderNo := IncStr(NoSeries.GetLastNoUsed(ManufacturingSetup."Released Order Nos."));
+                    ExpectedProdOrderNo := IncStr(NoSeries.PeekNextNo(ManufacturingSetup."Released Order Nos."), 0);
                     GlobalExpectedConfirm := StrSubstNo(ProdOrderMessageSinglePart, ExpectedProdOrderNo);
+                    ManufacturingItems.CreateSelectProductionOrder.Invoke();
                 end;
             2:
                 begin
@@ -219,19 +217,26 @@ codeunit 50002 "Manufacturing Process Testing"
                 end;
             3:
                 begin
-                    ManufacturingSetup.Get();
-                    ExpectedProdOrderNo := IncStr(NoSeries.GetLastNoUsed(ManufacturingSetup."Released Order Nos."));
+                    Item.SetRange(Type, "Item Type"::Inventory);
+                    Item.SetRange("Replenishment System", "Replenishment System"::"Prod. Order");
+                    Item.SetRange("Manufacturing Policy", "Manufacturing Policy"::"Make-to-Order");
+                    Item.SetFilter("Routing No.", '<>%1', '');
+                    Item.SetFilter("Production BOM No.", '<>%1', '');
+                    Item.SetRange("Reordering Policy", "Reordering Policy"::Order);
                     for Number := 1 to GlobalItemNoList.Count() do begin
                         ManufacturingItems.GoToKey(GlobalItemNoList.Get(Number));
                         ManufacturingItems."Production Quantity".SetValue(GlobalQty);
                     end;
 
-                    ManufacturingItems.CreateAllProductionOrders.Invoke();
-
+                    ManufacturingSetup.Get();
+                    Number := Item.Count();
+                    ExpectedProdOrderNo := IncStr(NoSeries.PeekNextNo(ManufacturingSetup."Released Order Nos."), 0);
                     GlobalExpectedConfirm := StrSubstNo(ProdOrderMessageMultiPart,
+                                                        Number,
                                                         ExpectedProdOrderNo,
-                                                        NoSeries.GetLastNoUsed(ManufacturingSetup."Released Order Nos."));
-                    GlobalIsMultibleOrders := true;
+                                                        IncStr(ExpectedProdOrderNo, Number - 1));
+                    ManufacturingItems.CreateAllProductionOrders.Invoke();
+                    GlobalIsMultipleOrders := true;
                     Commit();
                 end;
 
@@ -248,11 +253,14 @@ codeunit 50002 "Manufacturing Process Testing"
         Clear(GlobalExpectedConfirm);
     end;
 
-    local procedure VerifyMultipleProdOrder(var ItemNo: Code[20])
+    local procedure VerifyMultipleProdOrder()
+    var
+        ItemNo: Code[20];
     begin
         foreach ItemNo in GlobalItemNoList do begin
             GlobalItem.Get(ItemNo);
             CheckProductionOrderCreatedCorrectly();
         end;
+
     end;
 }
